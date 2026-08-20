@@ -139,6 +139,43 @@
   .cmd-field select option { background: var(--panel-solid); color: var(--text); }
   .cmd-field select::placeholder{ color:var(--text-faint); }
 
+  /* ===== Futuristic FIND ROUTE Button ===== */
+  .find-btn {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.8px;
+    padding: 0 24px;
+    height: 46px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00f0ff 0%, #0088ff 100%);
+    color: #05080f;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4), inset 0 1px 1px rgba(255,255,255,0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+  }
+  .find-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.75), inset 0 1px 1px rgba(255,255,255,0.6);
+    filter: brightness(1.12);
+  }
+  .find-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  }
+  .find-btn svg {
+    stroke: #05080f;
+    transition: transform 0.2s ease;
+  }
+  .find-btn:hover svg {
+    transform: scale(1.15) rotate(-5deg);
+  }
+
   /* ===== Alert Banner ===== */
   .alert-banner{
     display:none; align-items:center; gap:16px; padding:15px 20px; border-radius:12px; margin-bottom:16px;
@@ -2230,9 +2267,7 @@
         }
         
         container.style.display = 'none';
-        
-        // Auto fetch route when suggestion is selected
-        fetchRouteDetails();
+        // Map updates ONLY when user clicks the FIND ROUTE button
       });
       container.appendChild(div);
     });
