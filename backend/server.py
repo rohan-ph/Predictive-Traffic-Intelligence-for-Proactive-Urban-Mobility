@@ -17,12 +17,14 @@ import iot_simulator
 import predictor
 import route_optimizer
 import cctv_video_processor
+import yolo_traffic_analyzer
 
 pipe = bmd45_pipeline.BMD45Pipeline()
 sim = iot_simulator.IoTSimulator()
 pred = predictor.TrafficPredictor()
 opt = route_optimizer.RouteOptimizer()
 video_proc = cctv_video_processor.CCTVVideoProcessor()
+yolo_analyzer = yolo_traffic_analyzer.YOLOTrafficAnalyzer(video_proc.video_path)
 
 HTML_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "traffic_dashboard_v2.html")
 
@@ -126,6 +128,49 @@ class TrafficAPIHandler(BaseHTTPRequestHandler):
             self._send_cors_headers()
             self.end_headers()
             self.wfile.write(json.dumps(telemetry_res, indent=2).encode('utf-8'))
+            return
+
+        # Serve Live YOLO Detection Annotated Frame JPEG
+        if path == "/api/yolo/frame":
+            frame_data = yolo_analyzer.process_frame()
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/jpeg')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(frame_data["jpeg_bytes"])
+            return
+
+        # Serve Live YOLO Detection Telemetry JSON
+        if path == "/api/yolo/telemetry":
+            frame_data = yolo_analyzer.process_frame()
+            res_json = {k: v for k, v in frame_data.items() if k != "jpeg_bytes"}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(res_json, indent=2).encode('utf-8'))
+            return
+
+        # Export Detailed Per-Vehicle CSV Report
+        if path == "/api/export/per_vehicle_csv":
+            csv_content = yolo_analyzer.export_per_vehicle_csv()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv')
+            self.send_header('Content-Disposition', 'attachment; filename="per_vehicle_detections.csv"')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(csv_content.encode('utf-8'))
+            return
+
+        # Export Summary CSV Report
+        if path == "/api/export/summary_csv":
+            csv_content = yolo_analyzer.export_summary_csv()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv')
+            self.send_header('Content-Disposition', 'attachment; filename="traffic_density_summary.csv"')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(csv_content.encode('utf-8'))
             return
 
         # Serve API endpoints
@@ -293,25 +338,84 @@ class TrafficAPIHandler(BaseHTTPRequestHandler):
                 "applied_interventions": sim.applied_interventions
             }
             self.wfile.write(json.dumps(response, indent=2).encode('utf-8'))
-        elif parsed.path == "/api/traffic/reset_interventions":
-            sim.reset_interventions()
+        elif parsed.path == "/api/config/weights":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            try:
+                body = json.loads(post_data.decode('utf-8'))
+            except Exception:
+                body = {}
+
+            yolo_analyzer.update_weights(body)
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self._send_cors_headers()
             self.end_headers()
             
-            response = {
+            res = {
                 "status": "SUCCESS",
-                "message": "All AI Interventions reset.",
-                "applied_interventions": sim.applied_interventions
+                "message": "Density weights updated successfully.",
+                "updated_weights": yolo_analyzer.density_weights
             }
-            self.wfile.write(json.dumps(response, indent=2).encode('utf-8'))
+            self.wfile.write(json.dumps(res, indent=2).encode('utf-8'))
+
+        elif parsed.path == "/api/config/roi":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            try:
+                body = json.loads(post_data.decode('utf-8'))
+            except Exception:
+                body = {}
+
+            polygon = body.get("polygon", [])
+            yolo_analyzer.set_roi(polygon)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._send_cors_headers()
+            self.end_headers()
+            
+            res = {
+                "status": "SUCCESS",
+                "message": "ROI polygon configured successfully."
+            }
+            self.wfile.write(json.dumps(res, indent=2).encode('utf-8'))
+
+        elif parsed.path == "/api/upload_video":
+            content_length = int(self.headers.get('Content-Length', 0))
+            raw_data = self.rfile.read(content_length) if content_length > 0 else b''
+            
+            upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+            save_path = os.path.join(upload_dir, "uploaded_traffic_cctv.mp4")
+
+            # Extract raw binary video content if multipart or raw stream
+            with open(save_path, "wb") as f:
+                f.write(raw_data)
+
+            # Reload analyzer with newly uploaded video
+            yolo_analyzer.load_video(save_path)
+            video_proc.cap = cv2.VideoCapture(save_path)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._send_cors_headers()
+            self.end_headers()
+            
+            res = {
+                "status": "SUCCESS",
+                "message": "CCTV video uploaded and real-time YOLO processing started.",
+                "video_path": save_path,
+                "total_frames": yolo_analyzer.total_frames
+            }
+            self.wfile.write(json.dumps(res, indent=2).encode('utf-8'))
 
 def run_server(port=8000):
-    server_address = ('', port)
+    server_address = ('0.0.0.0', port)
     httpd = HTTPServer(server_address, TrafficAPIHandler)
     print("=================================================================")
-    print(f" [+] OpenCV CCTV Video Processing Server & UI running at http://localhost:{port}")
+    print(f" [+] OpenCV CCTV Video Processing Server & UI running at http://127.0.0.1:{port}")
     print(" Press Ctrl+C to stop the server.")
     print("=================================================================")
     try:
