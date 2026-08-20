@@ -286,6 +286,17 @@
     border-radius: 4px;
     border: 1px solid rgba(77,214,255,0.3);
   }
+  .cam-thumb-has-video {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    font-size: 9px;
+    background: rgba(52,211,153,0.2);
+    color: var(--green);
+    border: 1px solid rgba(52,211,153,0.4);
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
   .cam-thumb-icon { font-size: 18px; opacity: 0.7; }
   .cam-thumb-foot {
     padding: 7px 9px;
@@ -298,20 +309,150 @@
   .cam-thumb-foot .pct { font-family: var(--font-mono); font-size: 10px; font-weight: bold; }
   .cam-thumb-foot .dot { width: 6px; height: 6px; border-radius: 50%; }
 
-  /* Upload button card in route strip */
-  .cam-thumb-upload {
-    border: 1px dashed var(--cyan);
-    background: rgba(77,214,255,0.03);
+  .open-cam-modal-btn {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--cyan);
+    background: rgba(77,214,255,0.08);
+    border: 1px solid rgba(77,214,255,0.3);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .open-cam-modal-btn:hover {
+    background: var(--cyan);
+    color: #0A0E17;
+    box-shadow: 0 0 10px var(--cyan-glow);
+  }
+
+  /* ── Route Cameras & Synthetic Video Manager Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 15, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 99999;
+    display: flex;
     align-items: center;
     justify-content: center;
-    height: 82px;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
   }
-  .cam-thumb-upload:hover {
-    background: rgba(77,214,255,0.08);
-    border-color: var(--cyan);
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
   }
+  .modal-card {
+    width: 100%;
+    max-width: 780px;
+    max-height: 85vh;
+    background: var(--panel-solid);
+    border: 1px solid var(--border-hi);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(77,214,255,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+  }
+  .modal-title-group { display: flex; flex-direction: column; gap: 4px; }
+  .modal-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .modal-subtitle { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .modal-close {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: var(--red); color: #fff; border-color: var(--red); }
+  .modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: flex-col;
+    gap: 16px;
+  }
+  .route-cam-manager-list { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+  
+  .rc-item-card {
+    background: var(--panel-hi);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .rc-item-card:hover { border-color: var(--border-hi); }
+  .rc-item-header { display: flex; justify-content: space-between; align-items: center; }
+  .rc-item-id { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 8px; }
+  .rc-item-leg { font-family: var(--font-body); font-size: 13px; color: var(--text); font-weight: 600; }
+  .rc-item-cong { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: bold; }
+  
+  .rc-video-slot {
+    background: rgba(0,0,0,0.3);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .rc-video-slot.has-video {
+    border-style: solid;
+    border-color: rgba(52,211,153,0.4);
+    background: rgba(52,211,153,0.04);
+  }
+  .rc-video-info { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .rc-upload-btn {
+    background: transparent;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .rc-upload-btn:hover { background: var(--cyan); color: #0A0E17; }
+  .rc-action-btn {
+    background: var(--cyan);
+    color: #0A0E17;
+    border: none;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--cyan-glow);
+    transition: all 0.2s;
+  }
+  .rc-action-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
   .legend-row{ display:flex; gap:16px; padding: 0 20px 18px; flex-wrap:wrap; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
@@ -609,7 +750,7 @@
       <div class="side-item active" title="Dashboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
       </div>
-      <div class="side-item" title="Live Cameras">
+      <div class="side-item" id="sidebarCamBtn" title="Route CCTV Cameras & Video Manager" onclick="openRouteCamerasModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
       </div>
       <div class="side-item" title="Route Planner">
@@ -798,16 +939,15 @@
           <!-- ── Available Route Cameras Strip Section ── -->
           <div class="route-cam-section">
             <div class="route-cam-head">
-              <div class="route-cam-title">CAMERAS ON THIS ROUTE</div>
-              <div class="route-cam-subtitle" id="routeCamSubtitle">SEARCH A ROUTE TO LOAD CAMERAS</div>
+              <div class="route-cam-title">CAMERAS DETECTED ON THIS ROUTE</div>
+              <button class="open-cam-modal-btn" onclick="openRouteCamerasModal()">
+                <span>🎥</span> MANAGE CAMERAS & UPLOAD VIDEOS
+              </button>
             </div>
             
             <div class="cam-strip" id="camerasThumbStrip">
               <!-- Dynamically populated with ONLY cameras on calculated route -->
             </div>
-
-            <!-- Hidden input for uploading dataset video -->
-            <input type="file" id="datasetFileInput" accept="video/*" style="display:none;" onchange="handleVideoUpload(event)">
           </div>
         </div>
 
@@ -1012,6 +1152,25 @@
     </div>
 
     <div class="footer-note">ROUTEPULSE BENGALURU DEMO PLATFORM · CONNECTED TO AI BACKEND SERVER AT http://localhost:8000 · INNOHACK AI/ML-09</div>
+  </div>
+</div>
+
+<!-- ── Route Cameras & Synthetic Video Manager Modal ── -->
+<div class="modal-overlay" id="routeCamerasModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div class="modal-title">🎥 ROUTE CCTV CAMERAS & VIDEO MANAGER</div>
+        <div class="modal-subtitle" id="modalRouteSummary">Select a camera along the calculated route to upload local synthetic video footage.</div>
+      </div>
+      <button class="modal-close" onclick="closeRouteCamerasModal()">✕</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="route-cam-manager-list" id="modalCamerasList">
+        <!-- Dynamically rendered per-camera upload cards -->
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1320,26 +1479,165 @@
 
   // Global store for cameras on the currently calculated route
   let activeRouteCameras = [];
+  // Per-camera uploaded video map: { 'CAM-SYN-01': { file, name, url } }
+  let cameraVideoMap = {};
+  let targetUploadCamId = null;
+
+  // Open Route Cameras Manager Modal
+  function openRouteCamerasModal() {
+    renderModalCameraList();
+    document.getElementById("routeCamerasModal").classList.add("open");
+  }
+
+  function closeRouteCamerasModal() {
+    document.getElementById("routeCamerasModal").classList.remove("open");
+  }
+
+  function renderModalCameraList() {
+    const list = document.getElementById("modalCamerasList");
+    const summary = document.getElementById("modalRouteSummary");
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    if (!activeRouteCameras || activeRouteCameras.length === 0) {
+      if (summary) summary.textContent = "No route selected yet. Please search a route on the dashboard first.";
+      list.innerHTML = `
+        <div style="text-align:center; padding:40px 20px; color:var(--text-faint); font-family:var(--font-mono); font-size:12px;">
+          📍 SEARCH A ROUTE ON THE DASHBOARD TO DETECT AVAILABLE ROUTE CAMERAS
+        </div>
+      `;
+      return;
+    }
+
+    const originName = document.getElementById("originInput").value.split(',')[0] || "Origin";
+    const destName = document.getElementById("destInput").value.split(',')[0] || "Destination";
+    if (summary) summary.textContent = `📍 ACTIVE ROUTE: ${originName} ➔ ${destName} (${activeRouteCameras.length} CCTV Cameras Detected)`;
+
+    activeRouteCameras.forEach(cam => {
+      const vid = cameraVideoMap[cam.id];
+      const isLive = activeSyntheticCamera && activeSyntheticCamera.id === cam.id;
+      
+      let congColor = "var(--green)";
+      if (cam.congestion >= 75) congColor = "var(--red)";
+      else if (cam.congestion >= 50) congColor = "var(--amber)";
+
+      const item = document.createElement("div");
+      item.className = "rc-item-card";
+      item.innerHTML = `
+        <div class="rc-item-header">
+          <div class="rc-item-id">
+            <span>📷 ${cam.id}</span>
+            <span style="color:var(--text); font-weight:normal; margin-left:6px;">— ${cam.legName}</span>
+          </div>
+          <span class="rc-item-cong" style="background:rgba(255,255,255,0.05); color:${congColor}; border:1px solid ${congColor};">
+            ${cam.congestion}% CONGESTION
+          </span>
+        </div>
+
+        <div class="rc-video-slot ${vid ? 'has-video' : ''}">
+          <div class="rc-video-info">
+            <span style="font-size:16px;">${vid ? '🎬' : '📁'}</span>
+            <div>
+              <div style="color:${vid ? 'var(--green)' : 'var(--text-dim)'}; font-weight:bold;">
+                ${vid ? `DATASET ATTACHED: ${vid.name}` : 'NO VIDEO DATASET UPLOADED'}
+              </div>
+              <div style="font-size:9.5px; color:var(--text-faint); margin-top:2px;">
+                ${vid ? 'Video assigned to this camera node' : 'Upload MP4/WebM file to play in place of default feed'}
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="file" id="fileInput_${cam.id}" accept="video/*" style="display:none;" onchange="handlePerCameraVideoUpload(event, '${cam.id}')">
+            
+            <button class="rc-upload-btn" onclick="document.getElementById('fileInput_${cam.id}').click()">
+              ${vid ? 'CHANGE VIDEO' : '+ UPLOAD VIDEO'}
+            </button>
+
+            ${vid ? `<button onclick="removePerCameraVideo('${cam.id}')" style="background:none; border:none; color:var(--red); font-size:14px; cursor:pointer;" title="Remove video">✕</button>` : ''}
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="rc-action-btn" onclick="selectSyntheticCamera('${cam.id}', '${cam.name}', ${cam.congestion}, [${cam.coord}]); closeRouteCamerasModal();">
+            ${isLive ? '● CURRENTLY LIVE ON DASHBOARD' : '📺 SET AS LIVE CCTV FEED'}
+          </button>
+        </div>
+      `;
+
+      list.appendChild(item);
+    });
+  }
+
+  function handlePerCameraVideoUpload(event, camId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    cameraVideoMap[camId] = {
+      file: file,
+      name: file.name,
+      url: url
+    };
+    event.target.value = '';
+    
+    // Refresh modal list
+    renderModalCameraList();
+    // Refresh dashboard camera strip icons
+    renderRouteCamerasStrip(activeRouteCameras);
+
+    // If this camera is currently playing on the monitor, switch player immediately
+    if (activeSyntheticCamera && activeSyntheticCamera.id === camId) {
+      playCameraAssignedVideo(camId);
+    }
+  }
+
+  function removePerCameraVideo(camId) {
+    if (cameraVideoMap[camId]) {
+      URL.revokeObjectURL(cameraVideoMap[camId].url);
+      delete cameraVideoMap[camId];
+    }
+    renderModalCameraList();
+    renderRouteCamerasStrip(activeRouteCameras);
+  }
+
+  function playCameraAssignedVideo(camId) {
+    const vid = cameraVideoMap[camId];
+    const player = document.getElementById('cctvVideoPlayer');
+    const frameImg = document.getElementById('cctvVideoFrame');
+    const synthOverlay = document.getElementById('cctvSyntheticPlaceholder');
+
+    if (vid) {
+      player.src = vid.url;
+      player.style.display = 'block';
+      if (frameImg) frameImg.style.display = 'none';
+      if (synthOverlay) synthOverlay.style.display = 'none';
+
+      const shortName = vid.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 24);
+      const hud = document.getElementById('cctvHudText');
+      if (hud) hud.textContent = `● DATASET [${shortName}] | ROUTE CAMERA ${camId}`;
+
+      const title = document.getElementById('cctvPanelTitle');
+      if (title) title.innerHTML = `<span class="eyebrow"></span>SYNTHETIC DATASET — ${camId} (${shortName})`;
+    } else {
+      // Revert player to default backend stream / overlay
+      if (player) { player.pause(); player.src = ''; player.style.display = 'none'; }
+      if (frameImg) frameImg.style.display = 'block';
+    }
+  }
 
   // Render horizontal camera strip containing ONLY cameras on the calculated route
   function renderRouteCamerasStrip(routeCams) {
     const strip = document.getElementById("camerasThumbStrip");
-    const subtitle = document.getElementById("routeCamSubtitle");
     if (!strip) return;
     
     strip.innerHTML = "";
     
-    if (!routeCams || routeCams.length === 0) {
-      if (subtitle) subtitle.textContent = "SEARCH A ROUTE TO LOAD CAMERAS";
-      return;
-    }
-
-    if (subtitle) {
-      subtitle.textContent = `${routeCams.length} CAMERAS DETECTED ON ROUTE`;
-    }
+    if (!routeCams || routeCams.length === 0) return;
 
     routeCams.forEach(cam => {
       const isSelected = activeSyntheticCamera && activeSyntheticCamera.id === cam.id;
+      const vid = cameraVideoMap[cam.id];
       const thumb = document.createElement("div");
       thumb.className = `cam-thumb ${isSelected ? 'active' : ''}`;
       
@@ -1350,6 +1648,7 @@
       thumb.innerHTML = `
         <div class="cam-thumb-img">
           <span class="cam-thumb-tag">${cam.id}</span>
+          ${vid ? '<span class="cam-thumb-has-video">🎬 VIDEO</span>' : ''}
           <span class="cam-thumb-icon">📷</span>
         </div>
         <div class="cam-thumb-foot">
@@ -1364,42 +1663,6 @@
 
       strip.appendChild(thumb);
     });
-
-    // Add upload card at the end of the strip
-    const uploadCard = document.createElement("div");
-    uploadCard.className = "cam-thumb cam-thumb-upload";
-    uploadCard.innerHTML = `
-      <span style="font-size:16px; margin-bottom:2px;">📁</span>
-      <span style="font-family:var(--font-mono); font-size:9px; color:var(--cyan); letter-spacing:0.5px;">+ UPLOAD VIDEO</span>
-    `;
-    uploadCard.onclick = () => {
-      document.getElementById("datasetFileInput").click();
-    };
-    strip.appendChild(uploadCard);
-  }
-
-  function handleVideoUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    
-    const player = document.getElementById('cctvVideoPlayer');
-    const frameImg = document.getElementById('cctvVideoFrame');
-    const synthOverlay = document.getElementById('cctvSyntheticPlaceholder');
-
-    player.src = url;
-    player.style.display = 'block';
-    if (frameImg) frameImg.style.display = 'none';
-    if (synthOverlay) synthOverlay.style.display = 'none';
-
-    const shortName = file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 24);
-    const hud = document.getElementById('cctvHudText');
-    if (hud) hud.textContent = `● DATASET [${shortName}] | ROUTE FOOTAGE PLAYING`;
-
-    const title = document.getElementById('cctvPanelTitle');
-    if (title) title.innerHTML = `<span class="eyebrow"></span>ROUTE DATASET VIDEO — ${shortName}`;
-
-    event.target.value = '';
   }
 
   // Handle camera node or thumbnail click
@@ -1659,6 +1922,9 @@
         }
       }
     });
+
+    // Trigger camera assigned video if uploaded
+    playCameraAssignedVideo(camId);
 
     // Re-render strip to highlight active route camera card
     renderRouteCamerasStrip(activeRouteCameras);
