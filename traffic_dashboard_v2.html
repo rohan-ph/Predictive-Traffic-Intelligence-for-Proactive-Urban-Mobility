@@ -204,18 +204,138 @@
     font-family: var(--font-mono); font-size: 10.5px; color: var(--red); display: none; font-weight: bold;
   }
 
-  .cam-strip{ display:flex; gap:10px; padding: 0 20px 20px; overflow-x:auto; }
-  .cam-thumb{
-    flex-shrink:0; width:130px; border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer;
-    transition: border-color 0.15s, transform 0.15s;
+  /* ── Synthetic Dataset Video Upload Zone ── */
+  .upload-zone-wrap { padding: 0 20px 20px; }
+  .upload-dropzone {
+    border: 2px dashed var(--cyan);
+    border-radius: 12px;
+    padding: 18px 20px 14px;
+    background: rgba(77,214,255,0.03);
+    transition: background 0.2s, border-color 0.2s;
+    cursor: pointer;
+    text-align: center;
   }
-  .cam-thumb:hover{ transform: translateY(-2px); border-color: var(--border-hi); }
-  .cam-thumb.active{ border-color: var(--amber); box-shadow: 0 0 10px var(--amber-glow); }
-  .cam-thumb-img{ height:50px; position:relative; }
-  .cam-thumb-tag{ position:absolute; top:6px; left:6px; font-family:var(--font-mono); font-size:9px; background:rgba(0,0,0,0.65); padding:2px 6px; border-radius:5px; }
-  .cam-thumb-foot{ padding:7px 9px; display:flex; justify-content:space-between; align-items:center; background:var(--panel-solid); }
-  .cam-thumb-foot .n{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
-  .cam-thumb-foot .dot{ width:6px; height:6px; border-radius:50%; }
+  .upload-dropzone.drag-over {
+    background: rgba(77,214,255,0.1);
+    border-color: var(--amber);
+  }
+  .upload-dropzone-icon {
+    font-size: 26px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .upload-dropzone-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .upload-dropzone-sub {
+    font-size: 10px;
+    color: var(--text-faint);
+    font-family: var(--font-body);
+  }
+  .upload-browse-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 16px;
+    background: transparent;
+    border: 1px solid var(--cyan);
+    border-radius: 6px;
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .upload-browse-btn:hover { background: var(--cyan); color: #0A0E17; }
+
+  .uploaded-videos-list {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .uploaded-videos-list:empty::after {
+    content: 'No videos uploaded yet.';
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.5px;
+    display: block;
+    padding: 4px 0;
+  }
+  .uv-card {
+    flex-shrink: 0;
+    width: 130px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    background: var(--panel-solid);
+    position: relative;
+  }
+  .uv-card:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .uv-card.active { border-color: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
+  .uv-thumb {
+    height: 52px;
+    background: linear-gradient(135deg,#0c1624,#07111f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .uv-thumb-play {
+    font-size: 18px;
+    opacity: 0.6;
+  }
+  .uv-active-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan-glow);
+    display: none;
+  }
+  .uv-card.active .uv-active-dot { display: block; }
+  .uv-foot {
+    padding: 6px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+  }
+  .uv-name {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .uv-remove {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .uv-remove:hover { color: var(--red); }
 
   .legend-row{ display:flex; gap:16px; padding: 0 20px 18px; flex-wrap:wrap; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
@@ -426,6 +546,77 @@
   }
 
   .footer-note{ text-align:center; color:var(--text-faint); font-size:11.5px; margin-top:14px; font-family:var(--font-mono); letter-spacing:0.3px; }
+
+  /* Synthetic CCTV camera markers on the map */
+  .cctv-route-icon {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .cctv-marker-pulse {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--cyan);
+    opacity: 0.35;
+    animation: cctv-pulse 2s infinite;
+  }
+  .cctv-marker-icon {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    background: var(--panel-solid);
+    border: 2px solid var(--cyan);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    box-shadow: 0 0 10px var(--cyan-glow);
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+  .cctv-marker-icon:hover {
+    transform: scale(1.2);
+    border-color: var(--amber);
+    box-shadow: 0 0 12px var(--amber-glow);
+  }
+  @keyframes cctv-pulse {
+    0% { transform: scale(0.6); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+
+  .cctv-synthetic-noise {
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    background-image: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15),
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+  }
+  .cctv-scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(77, 214, 255, 0.2);
+    box-shadow: 0 0 10px var(--cyan-glow);
+    animation: scanline 6s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scanline {
+    0% { top: 0%; }
+    100% { top: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -588,15 +779,65 @@
             <div class="panel-meta">OPENCV FRAME-BY-FRAME ANALYTICS</div>
           </div>
           
-          <div class="video-wrapper">
+          <div class="video-wrapper" style="position: relative;">
+            <!-- Uploaded synthetic dataset video player -->
+            <video id="cctvVideoPlayer" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:0;" autoplay loop muted playsinline></video>
+
+            <!-- Backend OpenCV frame stream (shown when no upload) -->
             <img id="cctvVideoFrame" src="http://localhost:8000/api/video/frame?camera_id=CAM-3049" alt="CCTV Feed">
+
+            <!-- No-upload idle overlay -->
+            <div id="cctvUploadIdleOverlay" style="display:none; position:absolute; inset:0; background:rgba(7,11,20,0.88); flex-direction:column; align-items:center; justify-content:center; z-index:3;">
+              <div class="cctv-synthetic-noise"></div>
+              <div class="cctv-scanline"></div>
+              <span style="font-size:32px; margin-bottom:10px;">📂</span>
+              <div style="font-family:var(--font-mono); font-size:12px; color:var(--cyan); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px;">[ AWAITING DATASET ]</div>
+              <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-faint); text-align:center;">Upload a synthetic CCTV video below<br>to begin AI analysis</div>
+              <div style="position:absolute;top:12px;left:12px;width:14px;height:14px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);"></div>
+              <div style="position:absolute;top:12px;right:12px;width:14px;height:14px;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan);"></div>
+              <div style="position:absolute;bottom:12px;left:12px;width:14px;height:14px;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan);"></div>
+              <div style="position:absolute;bottom:12px;right:12px;width:14px;height:14px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);"></div>
+            </div>
+
+            <!-- Synthetic route-camera placeholder (from map click) -->
+            <div id="cctvSyntheticPlaceholder" style="display:none; position:absolute; inset:0; background:#070b14; flex-direction:column; align-items:center; justify-content:center; z-index:2; border:1px solid var(--cyan-glow);">
+              <div class="cctv-synthetic-noise"></div>
+              <div class="cctv-scanline"></div>
+              <div style="font-family:var(--font-mono); font-size:14px; color:var(--cyan); text-shadow:0 0 10px var(--cyan-glow); font-weight:bold; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">[ SYNTHETIC FEED ACTIVE ]</div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-align:center; line-height:1.6; max-width:80%;">
+                Telemetry Source: Route Coordinate Interpolation<br>
+                Estimated Congestion: <span id="synCongestionText" style="font-weight:bold; color:var(--amber);">--%</span><br>
+                <span style="font-size:9px; opacity:0.6;">(Select a video below to replace with your dataset footage)</span>
+              </div>
+              <div style="position:absolute;top:15px;left:15px;width:15px;height:15px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);"></div>
+              <div style="position:absolute;top:15px;right:15px;width:15px;height:15px;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan);"></div>
+              <div style="position:absolute;bottom:15px;left:15px;width:15px;height:15px;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan);"></div>
+              <div style="position:absolute;bottom:15px;right:15px;width:15px;height:15px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);"></div>
+            </div>
+
             <div class="video-hud" id="cctvHudText">● REC [CAM-3049 SILK BOARD] | OPENCV AI DETECTOR ACTIVE</div>
             <div class="video-hud-alert" id="cctvHudAlert">⚠️ CONGESTION BUILDING</div>
           </div>
 
-          <!-- Camera selector thumbnails strip -->
-          <div class="cam-strip" id="camerasThumbStrip">
-            <!-- Dynamically populated -->
+          <!-- ── Synthetic Dataset Upload Zone ── -->
+          <div class="upload-zone-wrap">
+            <!-- Hidden file input -->
+            <input type="file" id="datasetFileInput" accept="video/*" multiple style="display:none;" onchange="handleVideoUpload(event)">
+
+            <!-- Drag & drop zone -->
+            <div class="upload-dropzone" id="uploadDropzone"
+              ondragover="event.preventDefault(); this.classList.add('drag-over');"
+              ondragleave="this.classList.remove('drag-over');"
+              ondrop="handleVideoDrop(event);"
+              onclick="document.getElementById('datasetFileInput').click()">
+              <span class="upload-dropzone-icon">🎬</span>
+              <span class="upload-dropzone-label">Drop Synthetic Dataset Videos Here</span>
+              <span class="upload-dropzone-sub">Supports MP4, WebM, MOV, AVI</span>
+              <div class="upload-browse-btn">BROWSE FILES</div>
+            </div>
+
+            <!-- Uploaded videos list -->
+            <div class="uploaded-videos-list" id="uploadedVideosList"></div>
           </div>
         </div>
 
@@ -819,6 +1060,8 @@
   let osmMap;
   let markers = {};
   let activeRouteLines = [];
+  let syntheticCameraMarkers = [];
+  let activeSyntheticCamera = null;
 
   function initMap() {
     osmMap = L.map('map', {
@@ -886,9 +1129,19 @@
     activeRouteLines.forEach(line => osmMap.removeLayer(line));
     activeRouteLines = [];
 
+    // Clear previous synthetic camera markers
+    syntheticCameraMarkers.forEach(marker => osmMap.removeLayer(marker));
+    syntheticCameraMarkers = [];
+
     if (!standardCoords || !optimizedCoords) return;
 
-    // Draw standard route (dashed red)
+    // Draw standard route (dashed red with a subtle glow)
+    const stdGlowLine = L.polyline(standardCoords, {
+      color: '#FB6169',
+      weight: 10,
+      opacity: 0.15
+    }).addTo(osmMap);
+
     const stdLine = L.polyline(standardCoords, {
       color: '#FB6169',
       weight: 5,
@@ -896,15 +1149,70 @@
       dashArray: '10, 10'
     }).addTo(osmMap);
     
-    // Draw optimized route (solid green with bright tone)
+    // Draw optimized route (neon cyan with a glowing neon outline)
+    const optGlowLine = L.polyline(optimizedCoords, {
+      color: '#00f0ff',
+      weight: 12,
+      opacity: 0.25
+    }).addTo(osmMap);
+
     const optLine = L.polyline(optimizedCoords, {
-      color: '#34D399',
+      color: '#00f0ff',
       weight: 6,
       opacity: 0.95
     }).addTo(osmMap);
 
+    activeRouteLines.push(stdGlowLine);
     activeRouteLines.push(stdLine);
+    activeRouteLines.push(optGlowLine);
     activeRouteLines.push(optLine);
+
+    // Place synthetic CCTV cameras along the optimized route
+    if (optimizedCoords.length > 4) {
+      const indices = [
+        Math.floor(optimizedCoords.length * 0.25),
+        Math.floor(optimizedCoords.length * 0.50),
+        Math.floor(optimizedCoords.length * 0.75)
+      ];
+      
+      const cameraIcon = L.divIcon({
+        className: 'cctv-route-icon',
+        html: `<div class="cctv-marker-pulse"></div><div class="cctv-marker-icon">📷</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+
+      indices.forEach((idx, i) => {
+        const coord = optimizedCoords[idx];
+        const camId = `CAM-SYN-0${i+1}`;
+        
+        // Dynamic name using start and destination names if possible
+        const originName = document.getElementById("originInput").value.split(',')[0] || "Origin";
+        const destName = document.getElementById("destInput").value.split(',')[0] || "Destination";
+        const camName = `${originName} to ${destName} - Leg ${i+1}`;
+        
+        // Deterministic synthetic congestion percentage based on leg index
+        const congestion = Math.floor(35 + (i * 20) + Math.random() * 15);
+        
+        const marker = L.marker(coord, { icon: cameraIcon }).addTo(osmMap);
+        marker.camId = camId;
+        
+        marker.bindPopup(`
+          <div style="font-family: var(--font-body); font-size:12px; color: var(--text);">
+            <b style="color:var(--cyan); font-family:var(--font-display);">${camId}</b><br>
+            <span style="color:var(--text-dim); font-size:11px;">${camName}</span><br>
+            Estimated Congestion: <b style="color:${congestion > 75 ? 'var(--red)' : (congestion > 50 ? 'var(--amber)' : 'var(--green)')};">${congestion}%</b><br>
+            <button onclick="selectSyntheticCamera('${camId}', '${camName}', ${congestion}, [${coord}])" style="margin-top:8px; width:100%; background:var(--cyan); border:none; color:#0A0E17; font-family:var(--font-display); font-weight:700; font-size:10px; padding:6px; border-radius:4px; cursor:pointer; box-shadow:0 0 5px var(--cyan-glow);">MONITOR CAMERA</button>
+          </div>
+        `);
+        
+        marker.on('click', () => {
+          selectSyntheticCamera(camId, camName, congestion, coord);
+        });
+
+        syntheticCameraMarkers.push(marker);
+      });
+    }
 
     const group = new L.featureGroup([stdLine, optLine]);
     osmMap.fitBounds(group.getBounds(), { padding: [50, 50] });
@@ -1031,35 +1339,104 @@
     });
   }
 
-  // Render Horizontal Camera Thumbnails strip
-  function renderThumbnailsStrip(corridors) {
-    const strip = document.getElementById("camerasThumbStrip");
-    if (!strip) return;
-    
-    // Select first 5 major corridors
-    const displayList = corridors.slice(0, 6);
-    strip.innerHTML = "";
-    
-    displayList.forEach(c => {
-      const thumb = document.createElement("div");
-      thumb.className = `cam-thumb ${c.corridor_id === activeCorridorId ? 'active' : ''}`;
-      thumb.onclick = () => selectCorridor(c.corridor_id);
-      
-      let gradient = "linear-gradient(135deg,#123024,#0c1a15)";
-      if (c.congestion_pct >= 85) gradient = "linear-gradient(135deg,#3c1418,#1c0a0c)";
-      else if (c.congestion_pct >= 50) gradient = "linear-gradient(135deg,#3a2c10,#1c150a)";
+  // ── Synthetic Dataset Video Upload Handling ──
+  let uploadedVideos = []; // { name, url, id }
+  let activeUploadedVideoId = null;
 
-      thumb.innerHTML = `
-        <div class="cam-thumb-img" style="background: ${gradient};">
-          <span class="cam-thumb-tag">${c.camera_id}</span>
+  function handleVideoDrop(event) {
+    event.preventDefault();
+    document.getElementById('uploadDropzone').classList.remove('drag-over');
+    const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+    addVideosToList(files);
+  }
+
+  function handleVideoUpload(event) {
+    const files = Array.from(event.target.files).filter(f => f.type.startsWith('video/'));
+    addVideosToList(files);
+    event.target.value = '';
+  }
+
+  function addVideosToList(files) {
+    files.forEach(file => {
+      const id = 'uv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const url = URL.createObjectURL(file);
+      uploadedVideos.push({ id, name: file.name, url });
+    });
+    renderUploadedVideosList();
+    if (files.length > 0) {
+      const last = uploadedVideos[uploadedVideos.length - 1];
+      playUploadedVideo(last.id);
+    }
+  }
+
+  function renderUploadedVideosList() {
+    const list = document.getElementById('uploadedVideosList');
+    if (!list) return;
+    list.innerHTML = '';
+    uploadedVideos.forEach(v => {
+      const card = document.createElement('div');
+      card.className = `uv-card ${v.id === activeUploadedVideoId ? 'active' : ''}`;
+      card.id = 'uv_card_' + v.id;
+      card.innerHTML = `
+        <div class="uv-thumb">
+          <span class="uv-thumb-play">▶</span>
+          <span class="uv-active-dot"></span>
         </div>
-        <div class="cam-thumb-foot">
-          <span class="n">${c.name.split(' ')[0]}</span>
-          <span class="dot" style="background:${c.status_color};"></span>
+        <div class="uv-foot">
+          <span class="uv-name" title="${v.name}">${v.name.replace(/\.[^.]+$/, '')}</span>
+          <button class="uv-remove" title="Remove" onclick="event.stopPropagation(); removeUploadedVideo('${v.id}')">✕</button>
         </div>
       `;
-      strip.appendChild(thumb);
+      card.onclick = () => playUploadedVideo(v.id);
+      list.appendChild(card);
     });
+  }
+
+  function playUploadedVideo(id) {
+    const v = uploadedVideos.find(x => x.id === id);
+    if (!v) return;
+    activeUploadedVideoId = id;
+    const player = document.getElementById('cctvVideoPlayer');
+    const frameImg = document.getElementById('cctvVideoFrame');
+    const idleOverlay = document.getElementById('cctvUploadIdleOverlay');
+    const synthOverlay = document.getElementById('cctvSyntheticPlaceholder');
+    player.src = v.url;
+    player.style.display = 'block';
+    if (frameImg) frameImg.style.display = 'none';
+    if (idleOverlay) idleOverlay.style.display = 'none';
+    if (synthOverlay) synthOverlay.style.display = 'none';
+    const shortName = v.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 28);
+    const hud = document.getElementById('cctvHudText');
+    if (hud) hud.textContent = `● DATASET [${shortName}] | SYNTHETIC AI ANALYSIS ACTIVE`;
+    const title = document.getElementById('cctvPanelTitle');
+    if (title) title.innerHTML = `<span class="eyebrow"></span>SYNTHETIC DATASET MONITOR — ${shortName}`;
+    activeSyntheticCamera = activeSyntheticCamera || {
+      id: 'DATASET', name: shortName,
+      congestion: Math.floor(40 + Math.random() * 40),
+      lat: 12.9716, lng: 77.5946, frameIndex: 0
+    };
+    renderUploadedVideosList();
+  }
+
+  function removeUploadedVideo(id) {
+    const v = uploadedVideos.find(x => x.id === id);
+    if (v) URL.revokeObjectURL(v.url);
+    uploadedVideos = uploadedVideos.filter(x => x.id !== id);
+    if (activeUploadedVideoId === id) {
+      activeUploadedVideoId = null;
+      const player = document.getElementById('cctvVideoPlayer');
+      const frameImg = document.getElementById('cctvVideoFrame');
+      if (player) { player.pause(); player.src = ''; player.style.display = 'none'; }
+      if (frameImg) frameImg.style.display = 'block';
+      activeSyntheticCamera = null;
+      updateActiveCameraView();
+    }
+    renderUploadedVideosList();
+  }
+
+  // Render Horizontal Camera Thumbnails strip (kept for compatibility)
+  function renderThumbnailsStrip(corridors) {
+    // Thumbnails strip replaced by upload zone — no-op
   }
 
   // Handle camera node or thumbnail click
@@ -1067,6 +1444,13 @@
     const corr = corridorsList.find(c => c.corridor_id === corridorId);
     if (!corr) return;
     
+    // Deactivate synthetic camera view
+    activeSyntheticCamera = null;
+    const placeholder = document.getElementById("cctvSyntheticPlaceholder");
+    if (placeholder) {
+      placeholder.style.display = "none";
+    }
+
     activeCorridorId = corr.corridor_id;
     activeCameraId = corr.camera_id;
     activeCameraName = corr.name;
@@ -1250,6 +1634,11 @@
 
   // Fetch CCTV Live telemetry calculations from frame-by-frame OpenCV process
   async function fetchVideoTelemetry() {
+    if (activeSyntheticCamera) {
+      updateSyntheticTelemetry();
+      return;
+    }
+    
     try {
       const res = await fetch(`${BACKEND_URL}/api/video/telemetry?camera_id=${activeCameraId}`);
       if (res.ok) {
@@ -1259,6 +1648,103 @@
     } catch(e) {
       // fallback if backend stream is refreshing
     }
+  }
+
+  function selectSyntheticCamera(camId, camName, congestion, coord) {
+    activeSyntheticCamera = {
+      id: camId,
+      name: camName,
+      congestion: congestion,
+      lat: coord[0],
+      lng: coord[1],
+      frameIndex: 1000
+    };
+
+    activeCameraId = camId;
+    activeCameraName = camName;
+
+    // Show synthetic camera overlay
+    const placeholder = document.getElementById("cctvSyntheticPlaceholder");
+    if (placeholder) {
+      placeholder.style.display = "flex";
+      document.getElementById("synCongestionText").textContent = `${congestion}%`;
+      document.getElementById("synCongestionText").style.color = congestion > 75 ? 'var(--red)' : (congestion > 50 ? 'var(--amber)' : 'var(--green)');
+    }
+
+    // CCTV panel title update
+    document.getElementById("cctvPanelTitle").innerHTML = `<span class="eyebrow"></span>LIVE CCTV VIDEO AI MONITOR — ${camId} ${camName.toUpperCase()}`;
+
+    // Fetch SHAP explainability and interventions from closest corridor or default
+    fetchXaiInsights();
+    fetchSimulatedInterventions();
+
+    // Update active visual class of synthetic markers
+    syntheticCameraMarkers.forEach(m => {
+      const iconEl = m.getElement();
+      if (iconEl) {
+        const iconInner = iconEl.querySelector('.cctv-marker-icon');
+        if (iconInner) {
+          if (m.camId === camId) {
+            iconInner.style.borderColor = 'var(--amber)';
+            iconInner.style.boxShadow = '0 0 15px var(--amber-glow)';
+            iconInner.style.transform = 'scale(1.25)';
+          } else {
+            iconInner.style.borderColor = 'var(--cyan)';
+            iconInner.style.boxShadow = '0 0 10px var(--cyan-glow)';
+            iconInner.style.transform = 'scale(1)';
+          }
+        }
+      }
+    });
+
+    // Do immediate local update of metrics
+    updateSyntheticTelemetry();
+  }
+
+  function updateSyntheticTelemetry() {
+    if (!activeSyntheticCamera) return;
+
+    activeSyntheticCamera.frameIndex += 1;
+    
+    // Slighly fluctuate congestion by +/- 1%
+    let currentCong = activeSyntheticCamera.congestion;
+    currentCong += Math.floor(Math.random() * 3) - 1;
+    currentCong = Math.max(10, Math.min(99, currentCong));
+
+    // Synthesize vehicle counts based on congestion level
+    const scale = currentCong / 100.0;
+    const bikes = Math.round(15 * scale + Math.random() * 4);
+    const cars = Math.round(12 * scale + Math.random() * 3);
+    const buses = Math.round(4 * scale + Math.random() * 1.5);
+    const trucks = Math.round(2 * scale + Math.random() * 1);
+
+    // Calculate PCU
+    const totalPcu = parseFloat((bikes * 0.65 + cars * 1.0 + buses * 3.0 + trucks * 2.5).toFixed(1));
+    const totalVehicles = bikes + cars + buses + trucks;
+    const avgSpeed = Math.max(8, Math.round(60 - (50 * scale) + (Math.random() * 4 - 2)));
+
+    const syntheticData = {
+      camera_id: activeSyntheticCamera.id,
+      camera_name: activeSyntheticCamera.name,
+      congestion_pct: currentCong,
+      frame_index: activeSyntheticCamera.frameIndex,
+      total_vehicles: totalVehicles,
+      total_pcu: totalPcu,
+      avg_speed_kmh: avgSpeed,
+      delay_min: Math.round(12 * scale),
+      lat: activeSyntheticCamera.lat,
+      lng: activeSyntheticCamera.lng,
+      status: currentCong > 75 ? "CONGESTED" : (currentCong > 40 ? "MODERATE" : "CLEAR"),
+      status_color: currentCong > 75 ? "var(--red)" : (currentCong > 40 ? "var(--amber)" : "var(--green)"),
+      counts: {
+        bike: bikes,
+        car: cars,
+        bus: buses,
+        truck: trucks
+      }
+    };
+
+    updateCctvBreakdown(syntheticData);
   }
 
   // Update dynamic vehicle breakdown and gauge values
