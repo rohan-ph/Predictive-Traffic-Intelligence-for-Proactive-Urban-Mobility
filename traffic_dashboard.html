@@ -1204,53 +1204,7 @@
   }
 
   function updateMapMarkers(corridors) {
-    if (!osmMap) return;
-
-    corridors.forEach(c => {
-      const lat = c.lat;
-      const lng = c.lng;
-      const pct = c.congestion_pct;
-      
-      let markerColor = "#34D399"; // Green
-      if (pct > 85) markerColor = "#FB6169"; // Severe Red
-      else if (pct > 65) markerColor = "#ef4444"; // Heavy Red
-      else if (pct > 35) markerColor = "#FFB547"; // Moderate Orange
-
-      if (markers[c.corridor_id]) {
-        markers[c.corridor_id].setStyle({ fillColor: markerColor });
-        markers[c.corridor_id].setPopupContent(`<b>${c.name}</b><br>Camera: ${c.camera_id}<br>Congestion: ${pct}%`);
-      } else {
-        const marker = L.circleMarker([lat, lng], {
-          radius: 11,
-          fillColor: markerColor,
-          color: "#fff",
-          weight: 2.5,
-          opacity: 0.9,
-          fillOpacity: 0.85
-        }).addTo(osmMap);
-
-        marker.bindPopup(`<b>${c.name}</b><br>Camera: ${c.camera_id}<br>Congestion: ${pct}%`);
-
-        marker.on('click', () => {
-          selectCorridor(c.corridor_id);
-        });
-
-        markers[c.corridor_id] = marker;
-      }
-      
-      // Visual styling for active marker
-      if (c.corridor_id === activeCorridorId) {
-        markers[c.corridor_id].setRadius(14);
-        markers[c.corridor_id].setStyle({ color: "var(--amber)", weight: 3 });
-      } else {
-        markers[c.corridor_id].setRadius(10);
-        markers[c.corridor_id].setStyle({ color: "#fff", weight: 2.5 });
-      }
-    });
-
-    if (markers[activeCorridorId]) {
-      markers[activeCorridorId].openPopup();
-    }
+    // Static corridor circle markers removed as requested — map focuses solely on active route paths and route CCTV cameras
   }
 
   function drawRouteLines(standardCoords, optimizedCoords) {
