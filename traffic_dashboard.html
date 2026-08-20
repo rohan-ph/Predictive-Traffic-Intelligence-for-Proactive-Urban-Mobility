@@ -840,12 +840,12 @@
     <div class="glass command-bar" style="overflow: visible; z-index: 10000;">
       <div class="cmd-field origin" style="position: relative; overflow: visible;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DD6FF" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
-        <input type="text" id="originInput" placeholder="Enter starting location..." autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
+        <input type="text" id="originInput" placeholder="Enter current location" autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
         <div id="originSuggestions" class="suggestions-list"></div>
       </div>
       <div class="cmd-field" style="position: relative; overflow: visible;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-        <input type="text" id="destInput" placeholder="Enter destination..." autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
+        <input type="text" id="destInput" placeholder="Enter destination" autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
         <div id="destSuggestions" class="suggestions-list"></div>
       </div>
       <button class="find-btn" onclick="fetchRouteDetails()">
@@ -1333,13 +1333,12 @@
     setupAutocomplete('originInput', 'originSuggestions', true);
     setupAutocomplete('destInput', 'destSuggestions', false);
 
-    // Pre-populate input fields with defaults
-    document.getElementById('originInput').value = "Silk Board Junction, Bengaluru, Karnataka, India";
-    document.getElementById('destInput').value = "Indiranagar, Bengaluru, Karnataka, India";
+    // Keep inputs clean for user entry
+    document.getElementById('originInput').value = "";
+    document.getElementById('destInput').value = "";
 
     // Initial fetches
     fetchLiveTraffic();
-    fetchRouteDetails();
     updateActiveCameraView();
 
     // High frequency CCTV telemetry updates (calculated frame-by-frame from OpenCV)
@@ -2015,13 +2014,46 @@
   }
 
   // Selected coordinates store
-  let originCoords = [12.9172, 77.6228]; // Default: Silk Board
-  let destCoords = [12.9784, 77.6408];   // Default: Indiranagar
+  let originCoords = null;
+  let destCoords = null;
+
+  async function geocodeLocation(queryString) {
+    if (!queryString || !queryString.trim()) return null;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryString)}&viewbox=77.3,12.7,77.9,13.2&bounded=0&limit=1`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'RoutePulse-Traffic-Command-Center' } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        }
+      }
+    } catch (e) {
+      console.error("Geocoding query error:", e);
+    }
+    return null;
+  }
 
   // Dynamic OSRM routing and analytics update
   async function fetchRouteDetails() {
+    const originVal = document.getElementById('originInput').value;
+    const destVal = document.getElementById('destInput').value;
+
+    if (!originVal || !destVal) {
+      alert("Please enter both current location and destination.");
+      return;
+    }
+
+    // Geocode if coordinates not picked via autocomplete
+    if (!originCoords) {
+      originCoords = await geocodeLocation(originVal);
+    }
+    if (!destCoords) {
+      destCoords = await geocodeLocation(destVal);
+    }
+
     if (!originCoords || !destCoords) {
-      alert("Please select origin and destination locations from the suggestions list first.");
+      alert("Could not locate the entered addresses in Bengaluru. Please select a suggestion from the dropdown list.");
       return;
     }
 
