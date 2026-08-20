@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoutePulse — Spatio-Temporal AI Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg: #05070C;
+    --panel: rgba(18,23,36,0.65);
+    --panel-solid: #0D111C;
+    --panel-hi: rgba(255,255,255,0.035);
+    --border: rgba(255,255,255,0.08);
+    --border-hi: rgba(255,255,255,0.16);
+    --text: #F2F4FA;
+    --text-dim: #8D96AC;
+    --text-faint: #4D566E;
+    --amber: #FFB547;
+    --amber-glow: rgba(255,181,71,0.35);
+    --cyan: #4DD6FF;
+    --cyan-glow: rgba(77,214,255,0.35);
+    --green: #34D399;
+    --green-glow: rgba(52,211,153,0.35);
+    --red: #FB6169;
+    --red-glow: rgba(251,97,105,0.4);
+    --font-display: 'Chakra Petch', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* Atmosphere background grids */
+  .mesh{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .mesh::before, .mesh::after{
+    content:''; position:absolute; border-radius:50%; filter: blur(110px);
+  }
+  .mesh::before{ width:640px; height:640px; top:-220px; left:-120px; background: radial-gradient(circle, rgba(77,214,255,0.12), transparent 70%); }
+  .mesh::after{ width:560px; height:560px; top:60px; right:-160px; background: radial-gradient(circle, rgba(255,181,71,0.08), transparent 70%); }
+  
+  .grain{
+    position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .app{ display:flex; position:relative; z-index:2; }
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    width:84px; flex-shrink:0; height:100vh; position:sticky; top:0;
+    background: var(--panel-solid); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:22px 0;
+  }
+  .side-logo{
+    width:42px; height:42px; border-radius:12px; margin-bottom:34px;
+    background: linear-gradient(135deg, var(--amber), #c9791f);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; color:#0A0E17; font-size:15px;
+    box-shadow: 0 0 22px var(--amber-glow);
+  }
+  .side-nav{ display:flex; flex-direction:column; gap:8px; flex:1; }
+  .side-item{
+    width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--text-faint); position:relative; transition: all 0.18s;
+  }
+  .side-item:hover{ color:var(--text-dim); background:var(--panel-hi); }
+  .side-item.active{ color:var(--amber); background: rgba(255,181,71,0.1); }
+  .side-item.active::before{
+    content:''; position:absolute; left:-22px; width:3px; height:22px; border-radius:3px; background:var(--amber);
+    box-shadow: 0 0 10px var(--amber-glow);
+  }
+  .side-item svg{ width:20px; height:20px; }
+  .side-bottom{ display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .side-avatar{
+    width:36px; height:36px; border-radius:10px; background: linear-gradient(135deg, var(--cyan), #1c7fa3);
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:11px; font-weight:700; color:#04141a;
+  }
+
+  /* ===== Main ===== */
+  .main{ flex:1; min-width:0; padding: 22px 30px 40px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .crumb{ font-size:12px; color:var(--text-faint); font-family:var(--font-mono); letter-spacing:0.5px; margin-bottom:4px; }
+  .page-title{ font-family:var(--font-display); font-weight:700; font-size:23px; letter-spacing:0.3px; }
+  .topbar-right{ display:flex; align-items:center; gap:14px; }
+  .live-pill{
+    display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11.5px; color:var(--green);
+    padding:7px 13px; background: rgba(52,211,153,0.09); border:1px solid rgba(52,211,153,0.25); border-radius:20px;
+  }
+  .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation: blink 1.8s infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .clock{ font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim); background:var(--panel); border:1px solid var(--border); padding:8px 13px; border-radius:20px; }
+
+  /* glass panel base */
+  .glass{
+    background: var(--panel); border:1px solid var(--border); border-radius:16px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    position:relative; overflow:hidden;
+  }
+  .glass::before{
+    content:''; position:absolute; top:0; left:24px; right:24px; height:1px;
+    background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+  }
+
+  /* ===== KPI row ===== */
+  .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom:16px; }
+  @media (max-width:1100px){ .kpi-row{ grid-template-columns: repeat(2,1fr);} }
+  .kpi-card{ padding:18px 20px; }
+  .kpi-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .kpi-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; }
+  .kpi-trend{ font-family:var(--font-mono); font-size:11px; display:flex; align-items:center; gap:3px; }
+  .kpi-label{ font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.8px; font-family:var(--font-mono); margin-bottom:6px; }
+  .kpi-value{ font-family:var(--font-display); font-size:27px; font-weight:700; margin-bottom:10px; }
+  .kpi-spark{ width:100%; height:26px; }
+
+  /* ===== Command search ===== */
+  .command-bar{ display:flex; gap:10px; padding:10px; margin-bottom:16px; }
+  .cmd-field{
+    flex:1; display:flex; align-items:center; gap:11px; padding: 12px 16px; border-radius:12px;
+    background: var(--panel-hi); border:1px solid transparent; transition: border 0.15s;
+  }
+  .cmd-field:focus-within{ border-color: var(--border-hi); }
+  .cmd-field.origin{ flex: 0 0 320px; }
+  .cmd-field svg{ flex-shrink:0; opacity:0.6; }
+  .cmd-field select{ background:none; border:none; outline:none; color:var(--text); font-size:14px; width:100%; font-family:var(--font-body); cursor:pointer; }
+  .cmd-field select option { background: var(--panel-solid); color: var(--text); }
+  .cmd-field select::placeholder{ color:var(--text-faint); }
+
+  /* ===== Alert Banner ===== */
+  .alert-banner{
+    display:none; align-items:center; gap:16px; padding:15px 20px; border-radius:12px; margin-bottom:16px;
+    background: rgba(251,97,105,0.15); border:1px solid rgba(251,97,105,0.35);
+    animation: flashAlert 2.5s infinite alternate; z-index: 10;
+  }
+  @keyframes flashAlert {
+    0% { border-color: rgba(251,97,105,0.35); box-shadow: 0 0 10px rgba(251,97,105,0.1); }
+    100% { border-color: rgba(251,97,105,0.7); box-shadow: 0 0 25px rgba(251,97,105,0.35); }
+  }
+  .alert-icon { font-size: 22px; animation: scaleUp 0.8s infinite alternate; }
+  @keyframes scaleUp { 0% { transform: scale(1); } 100% { transform: scale(1.15); } }
+  .alert-content { flex: 1; }
+  .alert-title { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; letter-spacing: 0.5px; color: var(--red); margin-bottom: 2px; }
+  .alert-desc { font-size: 12px; color: var(--text-dim); }
+  .alert-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--text); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer; transition: all 0.2s; }
+  .alert-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--text-dim); }
+
+  /* ===== Grid ===== */
+  .grid{ display:grid; grid-template-columns: 1.6fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:1100px){ .grid{ grid-template-columns:1fr; } }
+
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; padding: 18px 20px 0; margin-bottom:14px; }
+  .panel-title{ font-family:var(--font-display); font-weight:600; font-size:13.5px; letter-spacing:0.6px; text-transform:uppercase; display:flex; align-items:center; gap:9px; }
+  .panel-title .eyebrow{ width:3px; height:14px; background: linear-gradient(var(--cyan), var(--amber)); border-radius:2px; }
+  .panel-meta{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); }
+
+  /* route canvas */
+  .route-canvas{ position:relative; height:320px; margin:0 20px 14px; border-radius:12px; overflow:hidden;
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px) 0 0/36px 36px,
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) 0 0/36px 36px,
+      radial-gradient(ellipse at 30% 20%, rgba(77,214,255,0.06), transparent 60%),
+      #080B14;
+    border:1px solid var(--border);
+  }
+  .route-canvas svg{ width:100%; height:100%; }
+  .flowline{ stroke-dasharray: 3 9; animation: flow 1.3s linear infinite; }
+  @keyframes flow{ to{ stroke-dashoffset:-24; } }
+
+  .cam-badge{
+    position:absolute; transform:translate(-50%,-100%); background:rgba(13,17,28,0.92); border:1px solid var(--border-hi);
+    border-radius:9px; padding:7px 10px; font-family:var(--font-mono); font-size:10.5px; white-space:nowrap; cursor: pointer;
+    box-shadow:0 8px 20px rgba(0,0,0,0.5); backdrop-filter: blur(6px); transition: all 0.2s;
+  }
+  .cam-badge:hover { border-color: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
+  .cam-badge.active { border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-glow); }
+  .cam-badge .cam-id{ color:var(--text-faint); }
+  .cam-badge .cam-val{ font-weight:700; }
+
+  /* video stream panel */
+  .video-panel-head { display:flex; justify-content:space-between; align-items:center; padding: 14px 20px 0; margin-bottom:10px; }
+  .video-wrapper {
+    margin: 0 20px 20px; height: 310px; background: #000; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid var(--border);
+  }
+  .video-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+  .video-hud {
+    position: absolute; top: 12px; left: 14px; background: rgba(5,7,12,0.85); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-hi);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--green); text-shadow: 0 0 4px var(--green-glow);
+  }
+  .video-hud-alert {
+    position: absolute; bottom: 12px; right: 14px; background: rgba(251,97,105,0.25); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--red);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--red); display: none; font-weight: bold;
+  }
+
+  .cam-strip{ display:flex; gap:10px; padding: 0 20px 20px; overflow-x:auto; }
+  .cam-thumb{
+    flex-shrink:0; width:130px; border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .cam-thumb:hover{ transform: translateY(-2px); border-color: var(--border-hi); }
+  .cam-thumb.active{ border-color: var(--amber); box-shadow: 0 0 10px var(--amber-glow); }
+  .cam-thumb-img{ height:50px; position:relative; }
+  .cam-thumb-tag{ position:absolute; top:6px; left:6px; font-family:var(--font-mono); font-size:9px; background:rgba(0,0,0,0.65); padding:2px 6px; border-radius:5px; }
+  .cam-thumb-foot{ padding:7px 9px; display:flex; justify-content:space-between; align-items:center; background:var(--panel-solid); }
+  .cam-thumb-foot .n{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
+  .cam-thumb-foot .dot{ width:6px; height:6px; border-radius:50%; }
+
+  .legend-row{ display:flex; gap:16px; padding: 0 20px 18px; flex-wrap:wrap; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
+  .legend-dot{ width:8px; height:8px; border-radius:50%; }
+
+  /* right col */
+  .right-col{ display:flex; flex-direction:column; gap:16px; }
+
+  /* Tabbed Engine System */
+  .engine-tabs { display:flex; border-bottom: 1px solid var(--border); padding: 0 20px; }
+  .engine-tab {
+    padding: 14px 16px; font-family: var(--font-display); font-size: 12.5px; font-weight: 600; text-transform: uppercase;
+    color: var(--text-faint); border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;
+  }
+  .engine-tab:hover { color: var(--text-dim); }
+  .engine-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+  
+  .engine-content { padding: 18px 20px; min-height: 250px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* XAI Factors list */
+  .xai-factor { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .xai-factor:last-child { margin-bottom: 0; }
+  .xai-icon { font-size: 16px; width: 28px; height: 28px; border-radius: 6px; background: var(--panel-hi); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
+  .xai-info { flex: 1; }
+  .xai-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 5px; }
+  .xai-name { font-weight: 500; color: var(--text); }
+  .xai-pct { font-family: var(--font-mono); color: var(--amber); }
+  .xai-track { height: 5px; background: var(--panel-hi); border-radius: 4px; overflow: hidden; }
+  .xai-fill { height: 100%; background: linear-gradient(90deg, var(--amber), #c9791f); border-radius: 4px; }
+
+  /* Intervention cards */
+  .interventions-list { display: flex; flex-direction: column; gap: 10px; }
+  .int-card {
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-hi);
+    transition: all 0.25s;
+  }
+  .int-card.recommended {
+    border-color: rgba(255,181,71,0.4); background: rgba(255,181,71,0.03);
+  }
+  .int-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .int-name { font-family: var(--font-display); font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .int-rec-tag { font-family: var(--font-mono); font-size: 8.5px; text-transform: uppercase; background: var(--amber-glow); color: var(--amber); border: 1px solid var(--amber); padding: 1px 6px; border-radius: 10px; }
+  .int-btn {
+    font-family: var(--font-display); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-dim); transition: all 0.2s;
+  }
+  .int-btn:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+  .int-card.recommended .int-btn {
+    background: var(--amber); border-color: var(--amber); color: #0A0E17; box-shadow: 0 0 10px var(--amber-glow);
+  }
+  .int-card.recommended .int-btn:hover { filter: brightness(1.08); }
+  .int-stats { display: flex; gap: 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
+  .int-stats span b { color: var(--text); }
+
+  .active-intervention-pill {
+    margin-top: 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(52,211,153,0.3);
+    background: rgba(52,211,153,0.06); display: flex; align-items: center; justify-content: space-between;
+  }
+  .active-int-label { font-family: var(--font-mono); font-size: 11.5px; color: var(--green); }
+  .reset-int-btn {
+    font-family: var(--font-mono); font-size: 10px; border: 1px solid rgba(251,97,105,0.3);
+    color: var(--red); background: rgba(251,97,105,0.08); padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  }
+  .reset-int-btn:hover { background: rgba(251,97,105,0.18); }
+
+  /* density row */
+  .density-row{ display:flex; align-items:center; gap:12px; margin-bottom:14px; padding:0 20px; }
+  .density-row:last-of-type{ margin-bottom:0; }
+  .density-icon{ width:34px; height:34px; border-radius:9px; background:var(--panel-hi); display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid var(--border); }
+  .density-info{ flex:1; }
+  .density-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; }
+  .density-label{ font-weight:500; }
+  .density-count{ font-family:var(--font-mono); color:var(--text-dim); font-size:11.5px; }
+  .density-bar-track{ height:6px; background:var(--panel-hi); border-radius:4px; overflow:hidden; }
+  .density-bar-fill{ height:100%; border-radius:4px; position:relative; transition: width 0.3s ease; }
+
+  .pcu-total{ margin:16px 20px 20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:baseline; }
+  .pcu-total-label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); font-family:var(--font-mono); }
+  .pcu-total-val{ font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--amber); text-shadow:0 0 20px var(--amber-glow); }
+
+  /* gauge */
+  .pulse-wrap{ display:flex; flex-direction:column; align-items:center; padding:6px 20px 24px; }
+  .gauge-stage{ position:relative; width:230px; height:230px; }
+  .gauge-ticks{ position:absolute; inset:0; }
+  .tick{ position:absolute; top:0; left:50%; width:2px; height:10px; background:var(--text-faint); transform-origin:1px 115px; border-radius:2px; }
+  .gauge-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .gauge-value{ font-family:var(--font-display); font-size:40px; font-weight:700; color:var(--amber); text-shadow:0 0 30px var(--amber-glow); transition: color 0.3s; }
+  .gauge-caption{ font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1.2px; margin-top:2px; }
+  .gauge-state{ margin-top:14px; font-family:var(--font-mono); font-size:11px; padding:6px 15px; border-radius:20px; transition: all 0.3s; }
+
+  /* bottom */
+  .bottom-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:16px; }
+  @media (max-width:1100px){ .bottom-grid{ grid-template-columns:1fr; } }
+
+  .timeline-wrap{ padding: 4px 20px 20px; }
+  .predict-note{ margin: 14px 20px 20px; padding:13px 15px; background:var(--panel-hi); border-radius:10px; border-left:3px solid var(--amber); font-size:12.5px; color:var(--text-dim); line-height:1.55; }
+  .predict-note b{ color:var(--text); }
+
+  /* Emergency Control style */
+  .emergency-control-panel { padding: 20px; display:flex; flex-direction:column; gap:14px; }
+  .emer-select-group { display: flex; gap: 10px; }
+  .emer-select-group select {
+    flex: 1; padding: 11px; background: var(--panel-hi); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: var(--font-body); font-size: 13px; cursor: pointer;
+  }
+  .emer-select-group select option { background: var(--panel-solid); }
+  .emer-btn {
+    font-family: var(--font-display); font-weight: 700; font-size: 13.5px; padding: 12px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--red), #b91c1c); color: var(--text); border: none; cursor: pointer;
+    box-shadow: 0 0 15px var(--red-glow); display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: all 0.2s;
+  }
+  .emer-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .emer-btn.active { background: #1f2937; color: var(--text-dim); border: 1px solid var(--border); box-shadow: none; cursor: not-allowed; }
+
+  .route-card{ margin: 0 20px 10px; border:1px solid var(--border); border-radius:12px; padding:15px 16px; background:var(--panel-hi); display:flex; align-items:center; gap:16px; transition: border-color 0.15s; }
+  .route-card:hover{ border-color: var(--border-hi); }
+  .route-card:last-child{ margin-bottom:20px; }
+  .route-card.best{ border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.05); }
+  .ring-wrap{ position:relative; width:52px; height:52px; flex-shrink:0; }
+  .ring-val{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12px; font-weight:700; }
+  .route-body{ flex:1; min-width:0; }
+  .route-card-top{ display:flex; align-items:center; gap:9px; margin-bottom:6px; }
+  .route-name{ font-family:var(--font-display); font-weight:600; font-size:13.5px; }
+  .best-tag{ font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; background:rgba(52,211,153,0.15); color:var(--green); padding:2px 8px; border-radius:12px; border:1px solid rgba(52,211,153,0.3); }
+  .route-stats{ display:flex; gap:16px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); }
+  .route-stats b{ color:var(--text); font-weight:600; }
+
+  /* Leaflet Map custom style overrides to match dark glassmorphism design */
+  .leaflet-container {
+    background: #0A0E17 !important;
+    font-family: var(--font-body) !important;
+  }
+  .leaflet-bar {
+    border: 1px solid var(--border) !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+  }
+  .leaflet-bar a {
+    background-color: var(--panel-solid) !important;
+    color: var(--text) !important;
+    border-bottom: 1px solid var(--border) !important;
+    transition: all 0.2s;
+  }
+  .leaflet-bar a:hover {
+    background-color: rgba(255,255,255,0.08) !important;
+    color: var(--amber) !important;
+  }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--panel-solid) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border-hi) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+    border-radius: 8px !important;
+  }
+  .leaflet-popup-content {
+    font-family: var(--font-mono) !important;
+    font-size: 11.5px !important;
+    margin: 10px 14px !important;
+    line-height: 1.5 !important;
+  }
+  .leaflet-popup-content b {
+    color: var(--amber) !important;
+  }
+  .leaflet-popup-close-button {
+    color: var(--text-dim) !important;
+  }
+
+  /* Autocomplete suggestions list styles */
+  .suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--panel-solid) !important;
+    border: 1px solid var(--border-hi) !important;
+    border-radius: 8px !important;
+    margin-top: 5px !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    z-index: 99999 !important;
+    display: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+    backdrop-filter: blur(10px);
+  }
+  .suggestion-item {
+    padding: 10px 14px !important;
+    cursor: pointer !important;
+    font-size: 12.5px !important;
+    color: var(--text-dim) !important;
+    font-family: var(--font-body) !important;
+    transition: all 0.2s !important;
+    border-bottom: 1px solid var(--border) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: left !important;
+  }
+  .suggestion-item:last-child {
+    border-bottom: none !important;
+  }
+  .suggestion-item:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: var(--text) !important;
+  }
+
+  .footer-note{ text-align:center; color:var(--text-faint); font-size:11.5px; margin-top:14px; font-family:var(--font-mono); letter-spacing:0.3px; }
+</style>
+</head>
+<body>
+
+<div class="mesh"></div>
+<div class="grain"></div>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="side-logo">RP</div>
+    <div class="side-nav">
+      <div class="side-item active" title="Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      </div>
+      <div class="side-item" title="Live Cameras">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      </div>
+      <div class="side-item" title="Route Planner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a4 4 0 0 0 4-4v-1a4 4 0 0 0-4-4H9a4 4 0 0 1-4-4v-1"/></svg>
+      </div>
+      <div class="side-item" title="Predictions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 3 3 5-8"/></svg>
+      </div>
+      <div class="side-item" title="Alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5-2 7-2 7h18s-2-2-2-7c0-4-3-7-7-7z"/><path d="M9 20a3 3 0 0 0 6 0"/></svg>
+      </div>
+    </div>
+    <div class="side-bottom">
+      <div class="side-item" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+      <div class="side-avatar">AI</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <div class="topbar">
+      <div>
+        <div class="crumb">COMMAND CENTER / BENGALURU METRO ZONE</div>
+        <div class="page-title">Live Congestion Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-pill"><span class="live-dot"></span>CCTV OPENCV VIDEO STREAM LIVE</div>
+        <div class="clock" id="clock">--:--:--</div>
+      </div>
+    </div>
+
+    <!-- KPI row -->
+    <div class="kpi-row">
+      <div class="glass kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:rgba(255,181,71,0.12);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="2"><path d="M12 22c5 0 9-4 9-9a9 9 0 0 0-18 0c0 5 4 9 9 9z"/><path d="M12 13l4-5"/></svg>
+          </div>
+          <div class="kpi-trend" id="kpiAvgTrend" style="color:#34D399;">● stable</div>
+        </div>
+        <div class="kpi-label">City Avg PCU Load</div>
+        <div class="kpi-value" id="kpiAvgPcu">--%</div>
+        <svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,20 15,17 30,19 45,12 60,14 75,7 100,4" fill="none" stroke="#FFB547" stroke-width="2"/></svg>
+      </div>
+
+      <div class="glass kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:rgba(77,214,255,0.12);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DD6FF" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </div>
+          <div class="kpi-trend" style="color:#34D399;">● active</div>
+        </div>
+        <div class="kpi-label">Corridors Simulated</div>
+        <div class="kpi-value" id="kpiCamerasCount">10 / 10</div>
+        <svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,10 20,9 40,11 60,8 80,9 100,10" fill="none" stroke="#4DD6FF" stroke-width="2"/></svg>
+      </div>
+
+      <div class="glass kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:rgba(52,211,153,0.12);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a4 4 0 0 0 4-4v-1a4 4 0 0 0-4-4H9a4 4 0 0 1-4-4v-1"/></svg>
+          </div>
+          <div class="kpi-trend" style="color:#34D399;">▲ 12%</div>
+        </div>
+        <div class="kpi-label">Routes Re-optimized</div>
+        <div class="kpi-value">1,348</div>
+        <svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,22 20,18 40,19 60,10 80,11 100,3" fill="none" stroke="#34D399" stroke-width="2"/></svg>
+      </div>
+
+      <div class="glass kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:rgba(251,97,105,0.12);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FB6169" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5-2 7-2 7h18s-2-2-2-7c0-4-3-7-7-7z"/><path d="M9 20a3 3 0 0 0 6 0"/></svg>
+          </div>
+          <div class="kpi-trend" id="kpiHotspotsTrend" style="color:#FB6169;">▲ 2 critical</div>
+        </div>
+        <div class="kpi-label">Active Hotspots</div>
+        <div class="kpi-value" id="kpiHotspotsCount">3</div>
+        <svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,18 20,20 40,14 60,16 80,8 100,9" fill="none" stroke="#FB6169" stroke-width="2"/></svg>
+      </div>
+    </div>
+
+    <!-- Origin Destination Command bar -->
+    <div class="glass command-bar" style="overflow: visible; z-index: 10000;">
+      <div class="cmd-field origin" style="position: relative; overflow: visible;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DD6FF" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
+        <input type="text" id="originInput" placeholder="Enter starting location..." autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
+        <div id="originSuggestions" class="suggestions-list"></div>
+      </div>
+      <div class="cmd-field" style="position: relative; overflow: visible;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB547" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <input type="text" id="destInput" placeholder="Enter destination..." autocomplete="off" style="background:transparent; border:none; color:var(--text); outline:none; font-family:var(--font-body); font-size:13.5px; width:100%;" />
+        <div id="destSuggestions" class="suggestions-list"></div>
+      </div>
+      <button class="find-btn" onclick="fetchRouteDetails()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0A0E17" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        FIND ROUTE
+      </button>
+    </div>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner" id="emergencyBanner">
+      <div class="alert-icon">🚨</div>
+      <div class="alert-content">
+        <div class="alert-title" id="emergencyTitle">EMERGENCY CORRIDOR SIGNAL OVERRIDE ACTIVE</div>
+        <div class="alert-desc" id="emergencyDesc">Green Wave enabled. Signals modified to continuous green from Silk Board to St. John's Hospital.</div>
+      </div>
+      <button class="alert-btn" onclick="dismissEmergency()">DEACTIVATE OVERRIDE</button>
+    </div>
+
+    <!-- Main grid -->
+    <div class="grid">
+
+      <!-- Left column: Map & Live Video feed -->
+      <div class="right-col">
+        
+        <!-- Spatial route map -->
+        <div class="glass">
+          <div class="panel-head">
+            <div class="panel-title"><span class="eyebrow"></span>INTERACTIVE BENGALURU TRAFFIC CORRIDORS</div>
+            <div class="panel-meta">SELECT NODE TO VIEW LIVE CCTV FEED</div>
+          </div>
+
+          <div id="map" style="height: 380px; margin: 0 20px 14px; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; position: relative; z-index: 1;"></div>
+
+          <!-- Legend -->
+          <div class="legend-row">
+            <div class="legend-item"><span class="legend-dot" style="background:#34D399"></span>Clear &lt;35%</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#FFB547"></span>Moderate 35–65%</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Heavy 65–85%</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#FB6169"></span>Severe &gt;85%</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#4D566E"></span>Alternate Path</div>
+          </div>
+        </div>
+
+        <!-- Live CCTV Monitor Panel -->
+        <div class="glass">
+          <div class="video-panel-head">
+            <div class="panel-title" id="cctvPanelTitle"><span class="eyebrow"></span>LIVE CCTV VIDEO AI MONITOR — CAM-3049 SILK BOARD</div>
+            <div class="panel-meta">OPENCV FRAME-BY-FRAME ANALYTICS</div>
+          </div>
+          
+          <div class="video-wrapper">
+            <img id="cctvVideoFrame" src="http://localhost:8000/api/video/frame?camera_id=CAM-3049" alt="CCTV Feed">
+            <div class="video-hud" id="cctvHudText">● REC [CAM-3049 SILK BOARD] | OPENCV AI DETECTOR ACTIVE</div>
+            <div class="video-hud-alert" id="cctvHudAlert">⚠️ CONGESTION BUILDING</div>
+          </div>
+
+          <!-- Camera selector thumbnails strip -->
+          <div class="cam-strip" id="camerasThumbStrip">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column: Spatio-temporal decision engine & CV metrics -->
+      <div class="right-col">
+
+        <!-- Spatio-Temporal Decision Engine (Simulator + XAI) -->
+        <div class="glass">
+          <div class="engine-tabs">
+            <div class="engine-tab active" id="tabXai" onclick="switchEngineTab('xai')">Explainable AI (XAI)</div>
+            <div class="engine-tab" id="tabSimulator" onclick="switchEngineTab('simulator')">Scenario Simulator</div>
+          </div>
+
+          <div class="engine-content">
+            
+            <!-- XAI Tab pane -->
+            <div class="tab-pane active" id="paneXai">
+              <div class="crumb" style="margin-bottom:10px;">SHAP CONGESTION ATTRIBUTION FACTORS</div>
+              <div id="xaiFactorsList">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="predict-note" style="margin: 14px 0 0; font-size:11.5px;">
+                💡 Spatio-Temporal explanation: High concentration of <b>BMTC buses</b> and <b>peak-hour commute density</b> at this bottleneck are the leading factors for the building backlog.
+              </div>
+            </div>
+
+            <!-- Simulator Tab pane -->
+            <div class="tab-pane" id="paneSimulator">
+              <div class="crumb" style="margin-bottom:10px;">SELECT INTERVENTION SCENARIO TO PREDICT OUTCOME</div>
+              
+              <div class="interventions-list" id="interventionsList">
+                <!-- Dynamically populated -->
+              </div>
+
+              <!-- Active Intervention Alert -->
+              <div class="active-intervention-pill" id="activeInterventionPill" style="display:none;">
+                <span class="active-int-label" id="activeIntLabel">● ACTIVE: Option D (Combined)</span>
+                <button class="reset-int-btn" onclick="resetInterventions()">RESET SIMULATION</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CCTV video frame metrics breakdown -->
+        <div class="glass">
+          <div class="panel-head">
+            <div class="panel-title"><span class="eyebrow"></span>CCTV LIVE AI VEHICLE DENSITY</div>
+            <div class="panel-meta">CALCULATED FROM VIDEO FRAME</div>
+          </div>
+
+          <div class="density-row">
+            <div class="density-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l3 9M10 8h5"/></svg></div>
+            <div class="density-info">
+              <div class="density-top"><span class="density-label">Motorbikes & Autos (0.5/0.8 PCU)</span><span class="density-count" id="cctvCountBikes">-- units</span></div>
+              <div class="density-bar-track"><div class="density-bar-fill" id="cctvBarBikes" style="width:0%; background:linear-gradient(90deg,#4DD6FF,#2f9fc4);"></div></div>
+            </div>
+          </div>
+          <div class="density-row">
+            <div class="density-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><path d="M3 13l2-6h14l2 6M5 13h14v4H5z"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></div>
+            <div class="density-info">
+              <div class="density-top"><span class="density-label">Cars (1.0 PCU ea)</span><span class="density-count" id="cctvCountCars">-- units</span></div>
+              <div class="density-bar-track"><div class="density-bar-fill" id="cctvBarCars" style="width:0%; background:linear-gradient(90deg,#FFB547,#c9791f);"></div></div>
+            </div>
+          </div>
+          <div class="density-row">
+            <div class="density-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><rect x="3" y="6" width="18" height="11" rx="1"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/></svg></div>
+            <div class="density-info">
+              <div class="density-top"><span class="density-label">Buses (3.0 PCU ea)</span><span class="density-count" id="cctvCountBuses">-- units</span></div>
+              <div class="density-bar-track"><div class="density-bar-fill" id="cctvBarBuses" style="width:0%; background:linear-gradient(90deg,#FB6169,#a83338);"></div></div>
+            </div>
+          </div>
+          <div class="density-row">
+            <div class="density-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><rect x="2" y="8" width="13" height="9" rx="1"/><path d="M15 11h4l3 3v3h-7z"/><circle cx="6" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg></div>
+            <div class="density-info">
+              <div class="density-top"><span class="density-label">Trucks & LCVs (2.5 PCU ea)</span><span class="density-count" id="cctvCountTrucks">-- units</span></div>
+              <div class="density-bar-track"><div class="density-bar-fill" id="cctvBarTrucks" style="width:0%; background:linear-gradient(90deg,#34D399,#1d9266);"></div></div>
+            </div>
+          </div>
+
+          <div class="pcu-total"><span class="pcu-total-label">CCTV PCU Load Index</span><span class="pcu-total-val" id="cctvPcuVal">-- PCU</span></div>
+        </div>
+
+        <!-- Congestion Arc Pulse Gauge -->
+        <div class="glass">
+          <div class="panel-head"><div class="panel-title"><span class="eyebrow"></span>CONGESTION PULSE (VIDEO ESTIMATED)</div></div>
+          <div class="pulse-wrap">
+            <div class="gauge-stage">
+              <div class="gauge-ticks" id="ticks"></div>
+              <svg viewBox="0 0 230 230" style="position:absolute; inset:0;">
+                <defs>
+                  <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#34D399"/>
+                    <stop offset="55%" stop-color="#FFB547"/>
+                    <stop offset="100%" stop-color="#FB6169"/>
+                  </linearGradient>
+                  <filter id="gglow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="5" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <circle cx="115" cy="115" r="92" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="14"/>
+                <circle id="gaugeFillArc" cx="115" cy="115" r="92" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round"
+                        stroke-dasharray="578" stroke-dashoffset="578" transform="rotate(-90 115 115)" filter="url(#gglow)"/>
+              </svg>
+              <div class="gauge-center">
+                <div class="gauge-value" id="gaugeValText">--%</div>
+                <div class="gauge-caption">Video-PCU Load</div>
+              </div>
+            </div>
+            <div class="gauge-state" id="gaugeStateBadge">LOADING telemetry...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom grid -->
+    <div class="bottom-grid">
+
+      <!-- Spatio-temporal prediction timeline -->
+      <div class="glass">
+        <div class="panel-head">
+          <div class="panel-title"><span class="eyebrow"></span>PREDICTED CONGESTION GRAPH UNTIL ARRIVAL</div>
+          <div class="panel-meta" id="predTimelineMeta">ETA 18 MIN</div>
+        </div>
+        <div class="timeline-wrap">
+          <svg viewBox="0 0 640 170" style="width:100%; height:170px;">
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFB547" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#FFB547" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="30" x2="640" y2="30" stroke="rgba(255,255,255,0.06)"/>
+            <line x1="0" y1="70" x2="640" y2="70" stroke="rgba(255,255,255,0.06)"/>
+            <line x1="0" y1="110" x2="640" y2="110" stroke="rgba(255,255,255,0.06)"/>
+            <path id="forecastAreaPath" d="M0,110 L80,96 L160,80 L240,64 L320,40 L400,20 L480,30 L560,58 L640,72 L640,150 L0,150 Z" fill="url(#areaGrad)"/>
+            <path id="forecastLinePath" d="M0,110 L80,96 L160,80 L240,64 L320,40 L400,20 L480,30 L560,58 L640,72" fill="none" stroke="#FFB547" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+            
+            <circle id="forecastPeakDot" cx="400" cy="20" r="5" fill="#FB6169" filter="url(#glow)"/>
+            <text id="forecastPeakText" x="400" y="10" fill="#FB6169" font-family="JetBrains Mono" font-size="10" text-anchor="middle">Peak --%</text>
+            
+            <line x1="460" y1="0" x2="460" y2="150" stroke="#4DD6FF" stroke-width="1.5" stroke-dasharray="3 5" opacity="0.7"/>
+            <rect x="410" y="0" width="100" height="20" rx="6" fill="rgba(77,214,255,0.15)" stroke="rgba(77,214,255,0.4)"/>
+            <text id="forecastEtaText" x="460" y="14" fill="#4DD6FF" font-family="JetBrains Mono" font-size="10" text-anchor="middle">YOUR ETA · 18m</text>
+          </svg>
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); margin-top:6px; padding:0 2px;">
+            <span>Now</span><span>+15m</span><span>+30m</span><span>+45m</span><span>+60m</span><span>+75m</span>
+          </div>
+        </div>
+        <div class="predict-note" id="predNoteText">
+          Loading prediction models...
+        </div>
+      </div>
+
+      <!-- Emergency corridor override & Alternate routes -->
+      <div class="right-col">
+        
+        <!-- Emergency green wave override -->
+        <div class="glass">
+          <div class="panel-head">
+            <div class="panel-title"><span class="eyebrow"></span>EMBULANCE EMERGENCY CORRIDOR OVERRIDE</div>
+            <div class="panel-meta">DEDICATED GREEN SIGNAL OVERRIDE</div>
+          </div>
+          <div class="emergency-control-panel">
+            <div class="emer-select-group">
+              <select id="emergencyCorridorSelect">
+                <option value="Silk Board Junction">Silk Board Junction Corridor</option>
+                <option value="Outer Ring Road">Outer Ring Road Corridor</option>
+                <option value="MG Road & Trinity Circle">MG Road Corridor</option>
+                <option value="Hebbal Flyover Junction">Hebbal Flyover Corridor</option>
+              </select>
+              <select id="emergencyHospitalSelect">
+                <option value="St. John's Hospital">St. John's Hospital (Emergency)</option>
+                <option value="Manipal Hospital">Manipal Hospital (Hal Road)</option>
+                <option value="Fortis Hospital">Fortis Hospital (Bannerghatta)</option>
+              </select>
+            </div>
+            <button class="emer-btn" id="emerBtn" onclick="triggerEmergency()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              ACTIVATE EMERGENCY GREEN WAVE
+            </button>
+          </div>
+        </div>
+
+        <!-- Alternate route info cards -->
+        <div class="glass" style="flex:1;">
+          <div class="panel-head">
+            <div class="panel-title"><span class="eyebrow"></span>AI DYNAMIC ALTERNATE ROUTING</div>
+          </div>
+          
+          <div id="alternateRoutesList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="footer-note">ROUTEPULSE BENGALURU DEMO PLATFORM · CONNECTED TO AI BACKEND SERVER AT http://localhost:8000 · INNOHACK AI/ML-09</div>
+  </div>
+</div>
+
+<script>
+  const BACKEND_URL = "http://localhost:8000";
+
+  // System State
+  let activeCorridorId = "CORR-01";
+  let activeCameraId = "CAM-3049";
+  let activeCameraName = "Silk Board Junction";
+  let corridorsList = [];
+  let isGreenWaveActive = false;
+  let activeIntervention = null;
+
+  // Map state
+  let osmMap;
+  let markers = {};
+  let activeRouteLines = [];
+
+  function initMap() {
+    osmMap = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: true
+    }).setView([12.9716, 77.5946], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(osmMap);
+  }
+
+  function updateMapMarkers(corridors) {
+    if (!osmMap) return;
+
+    corridors.forEach(c => {
+      const lat = c.lat;
+      const lng = c.lng;
+      const pct = c.congestion_pct;
+      
+      let markerColor = "#34D399"; // Green
+      if (pct > 85) markerColor = "#FB6169"; // Severe Red
+      else if (pct > 65) markerColor = "#ef4444"; // Heavy Red
+      else if (pct > 35) markerColor = "#FFB547"; // Moderate Orange
+
+      if (markers[c.corridor_id]) {
+        markers[c.corridor_id].setStyle({ fillColor: markerColor });
+        markers[c.corridor_id].setPopupContent(`<b>${c.name}</b><br>Camera: ${c.camera_id}<br>Congestion: ${pct}%`);
+      } else {
+        const marker = L.circleMarker([lat, lng], {
+          radius: 11,
+          fillColor: markerColor,
+          color: "#fff",
+          weight: 2.5,
+          opacity: 0.9,
+          fillOpacity: 0.85
+        }).addTo(osmMap);
+
+        marker.bindPopup(`<b>${c.name}</b><br>Camera: ${c.camera_id}<br>Congestion: ${pct}%`);
+
+        marker.on('click', () => {
+          selectCorridor(c.corridor_id);
+        });
+
+        markers[c.corridor_id] = marker;
+      }
+      
+      // Visual styling for active marker
+      if (c.corridor_id === activeCorridorId) {
+        markers[c.corridor_id].setRadius(14);
+        markers[c.corridor_id].setStyle({ color: "var(--amber)", weight: 3 });
+      } else {
+        markers[c.corridor_id].setRadius(10);
+        markers[c.corridor_id].setStyle({ color: "#fff", weight: 2.5 });
+      }
+    });
+
+    if (markers[activeCorridorId]) {
+      markers[activeCorridorId].openPopup();
+    }
+  }
+
+  function drawRouteLines(standardCoords, optimizedCoords) {
+    if (!osmMap) return;
+    activeRouteLines.forEach(line => osmMap.removeLayer(line));
+    activeRouteLines = [];
+
+    if (!standardCoords || !optimizedCoords) return;
+
+    // Draw standard route (dashed red)
+    const stdLine = L.polyline(standardCoords, {
+      color: '#FB6169',
+      weight: 5,
+      opacity: 0.8,
+      dashArray: '10, 10'
+    }).addTo(osmMap);
+    
+    // Draw optimized route (solid green with bright tone)
+    const optLine = L.polyline(optimizedCoords, {
+      color: '#34D399',
+      weight: 6,
+      opacity: 0.95
+    }).addTo(osmMap);
+
+    activeRouteLines.push(stdLine);
+    activeRouteLines.push(optLine);
+
+    const group = new L.featureGroup([stdLine, optLine]);
+    osmMap.fitBounds(group.getBounds(), { padding: [50, 50] });
+  }
+
+  // Initialize clock and gauge ticks
+  function updateClock(){
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour12:false });
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  const ticks = document.getElementById('ticks');
+  for(let i=0;i<40;i++){
+    const t = document.createElement('div');
+    t.className = 'tick';
+    t.style.transform = `rotate(${i*9}deg)`;
+    ticks.appendChild(t);
+  }
+
+  // Lifecycle
+  document.addEventListener("DOMContentLoaded", () => {
+    // Initialize Leaflet map
+    initMap();
+
+    // Setup input autocompletes
+    setupAutocomplete('originInput', 'originSuggestions', true);
+    setupAutocomplete('destInput', 'destSuggestions', false);
+
+    // Pre-populate input fields with defaults
+    document.getElementById('originInput').value = "Silk Board Junction, Bengaluru, Karnataka, India";
+    document.getElementById('destInput').value = "Indiranagar, Bengaluru, Karnataka, India";
+
+    // Initial fetches
+    fetchLiveTraffic();
+    fetchRouteDetails();
+    updateActiveCameraView();
+
+    // High frequency CCTV telemetry updates (calculated frame-by-frame from OpenCV)
+    setInterval(fetchVideoTelemetry, 300);
+
+    // Refresh telemetry list and map states every 3.5 seconds
+    setInterval(fetchLiveTraffic, 3500);
+  });
+
+  // Fetch all corridors and live statuses
+  async function fetchLiveTraffic() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/traffic/live`);
+      if (res.ok) {
+        const data = await res.json();
+        corridorsList = data.telemetry || [];
+        updateMetricsOverview(corridorsList);
+        updateMapMarkers(corridorsList);
+        renderThumbnailsStrip(corridorsList);
+        
+        // Find if any intervention is active
+        const activeInt = corridorsList.find(c => c.corridor_id === activeCorridorId);
+        // Wait, applied_interventions isn't returned directly, we infer from speed multipliers or active states
+      }
+    } catch(e) {
+      console.log("Error loading live traffic telemetry:", e);
+    }
+  }
+
+  // Update Overview stats card
+  function updateMetricsOverview(corridors) {
+    if (!corridors || corridors.length === 0) return;
+    
+    // Average citywide congestion
+    const avgCongestion = Math.round(corridors.reduce((acc, c) => acc + c.congestion_pct, 0) / corridors.length);
+    document.getElementById("kpiAvgPcu").textContent = `${avgCongestion}%`;
+    const avgTrend = document.getElementById("kpiAvgTrend");
+    if (avgCongestion > 65) {
+      avgTrend.textContent = "▲ critical";
+      avgTrend.style.color = "var(--red)";
+    } else if (avgCongestion > 45) {
+      avgTrend.textContent = "▲ moderate";
+      avgTrend.style.color = "var(--amber)";
+    } else {
+      avgTrend.textContent = "● stable";
+      avgTrend.style.color = "var(--green)";
+    }
+
+    // Hotspot count (>65%)
+    const hotspots = corridors.filter(c => c.congestion_pct > 65).length;
+    document.getElementById("kpiHotspotsCount").textContent = hotspots;
+    const hotspotTrend = document.getElementById("kpiHotspotsTrend");
+    if (hotspots > 3) {
+      hotspotTrend.textContent = `▲ ${hotspots} severe`;
+      hotspotTrend.style.color = "var(--red)";
+    } else if (hotspots > 0) {
+      hotspotTrend.textContent = `▲ ${hotspots} active`;
+      hotspotTrend.style.color = "var(--amber)";
+    } else {
+      hotspotTrend.textContent = "● clear";
+      hotspotTrend.style.color = "var(--green)";
+    }
+  }
+
+  // Update SVG Map nodes dynamically
+  function updateMapNodes(corridors) {
+    corridors.forEach(c => {
+      const node = document.getElementById(`node-${c.corridor_id}`);
+      const badgeVal = document.getElementById(`badgeVal-${c.corridor_id}`);
+      const badge = document.getElementById(`badge-${c.corridor_id}`);
+      
+      if (node && badgeVal) {
+        let color = "var(--green)";
+        if (c.congestion_pct >= 85.0) color = "var(--red)";
+        else if (c.congestion_pct >= 65.0) color = "#ef4444";
+        else if (c.congestion_pct >= 35.0) color = "var(--amber)";
+
+        node.setAttribute("fill", color);
+        badgeVal.textContent = `${c.congestion_pct}%`;
+        badgeVal.style.color = color;
+
+        // Toggle active border styling
+        if (c.corridor_id === activeCorridorId) {
+          badge.classList.add("active");
+        } else {
+          badge.classList.remove("active");
+        }
+      }
+    });
+  }
+
+  // Render Horizontal Camera Thumbnails strip
+  function renderThumbnailsStrip(corridors) {
+    const strip = document.getElementById("camerasThumbStrip");
+    if (!strip) return;
+    
+    // Select first 5 major corridors
+    const displayList = corridors.slice(0, 6);
+    strip.innerHTML = "";
+    
+    displayList.forEach(c => {
+      const thumb = document.createElement("div");
+      thumb.className = `cam-thumb ${c.corridor_id === activeCorridorId ? 'active' : ''}`;
+      thumb.onclick = () => selectCorridor(c.corridor_id);
+      
+      let gradient = "linear-gradient(135deg,#123024,#0c1a15)";
+      if (c.congestion_pct >= 85) gradient = "linear-gradient(135deg,#3c1418,#1c0a0c)";
+      else if (c.congestion_pct >= 50) gradient = "linear-gradient(135deg,#3a2c10,#1c150a)";
+
+      thumb.innerHTML = `
+        <div class="cam-thumb-img" style="background: ${gradient};">
+          <span class="cam-thumb-tag">${c.camera_id}</span>
+        </div>
+        <div class="cam-thumb-foot">
+          <span class="n">${c.name.split(' ')[0]}</span>
+          <span class="dot" style="background:${c.status_color};"></span>
+        </div>
+      `;
+      strip.appendChild(thumb);
+    });
+  }
+
+  // Handle camera node or thumbnail click
+  function selectCorridor(corridorId) {
+    const corr = corridorsList.find(c => c.corridor_id === corridorId);
+    if (!corr) return;
+    
+    activeCorridorId = corr.corridor_id;
+    activeCameraId = corr.camera_id;
+    activeCameraName = corr.name;
+
+    // Highlight map nodes and thumbnails
+    updateMapMarkers(corridorsList);
+    renderThumbnailsStrip(corridorsList);
+
+    // Update cctv video source
+    updateActiveCameraView();
+  }
+
+  // Update CCTV Monitor feed and triggers XAI/Simulator updates
+  function updateActiveCameraView() {
+    // CCTV panel header update
+    document.getElementById("cctvPanelTitle").innerHTML = `<span class="eyebrow"></span>LIVE CCTV VIDEO AI MONITOR — ${activeCameraId} ${activeCameraName.toUpperCase()}`;
+    
+    // update CCTV image src
+    document.getElementById("cctvVideoFrame").src = `${BACKEND_URL}/api/video/feed?camera_id=${activeCameraId}&t=${Date.now()}`;
+    
+    // Fetch Explainable AI factors
+    fetchXaiInsights();
+    
+    // Fetch Simulated Outcomes
+    fetchSimulatedInterventions();
+  }
+
+  // Fetch Explainable AI SHAP factors
+  async function fetchXaiInsights() {
+    const list = document.getElementById("xaiFactorsList");
+    if (!list) return;
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/traffic/xai?corridor_id=${activeCorridorId}`);
+      if (res.ok) {
+        const data = await res.json();
+        list.innerHTML = "";
+        data.factors.forEach(f => {
+          const row = document.createElement("div");
+          row.className = "xai-factor";
+          row.innerHTML = `
+            <div class="xai-icon">${f.icon}</div>
+            <div class="xai-info">
+              <div class="xai-top">
+                <span class="xai-name">${f.factor}</span>
+                <span class="xai-pct">${f.contribution}% contribution</span>
+              </div>
+              <div class="xai-track"><div class="xai-fill" style="width:${f.contribution}%;"></div></div>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+      }
+    } catch(e) {
+      console.log("XAI load failed.", e);
+    }
+  }
+
+  // Fetch simulated outcomes for Options A, B, C, D
+  async function fetchSimulatedInterventions() {
+    const list = document.getElementById("interventionsList");
+    if (!list) return;
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/traffic/interventions?corridor_id=${activeCorridorId}`);
+      if (res.ok) {
+        const data = await res.json();
+        list.innerHTML = "";
+        
+        data.interventions.forEach(opt => {
+          const isRec = opt.id === "Option D";
+          const card = document.createElement("div");
+          card.className = `int-card ${isRec ? 'recommended' : ''}`;
+          
+          let actionLabel = "SIMULATE";
+          if (activeIntervention === opt.id) {
+            actionLabel = "ACTIVE";
+          } else if (isRec) {
+            actionLabel = "APPLY AI OPTION";
+          }
+
+          card.innerHTML = `
+            <div class="int-card-head">
+              <span class="int-name">
+                ${isRec ? '⭐' : '⚙️'} ${opt.name}
+                ${isRec ? '<span class="int-rec-tag">AI RECOMMENDED</span>' : ''}
+              </span>
+              <button class="int-btn" onclick="applyIntervention('${opt.id}')">${actionLabel}</button>
+            </div>
+            <div class="int-stats">
+              <span>Congestion: <b style="color:${opt.congestion_pct > 75 ? 'var(--red)' : (opt.congestion_pct > 50 ? 'var(--amber)' : 'var(--green)')};">${opt.congestion_pct}%</b></span>
+              <span>Delay: <b>+${opt.delay_min} mins</b></span>
+              <span>CO2: <b>${opt.co2_kg} kg</b></span>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        // Toggle active intervention pill visibility
+        const pill = document.getElementById("activeInterventionPill");
+        const pillLabel = document.getElementById("activeIntLabel");
+        if (activeIntervention) {
+          pill.style.display = "flex";
+          const selectedInt = data.interventions.find(i => i.id === activeIntervention);
+          pillLabel.textContent = `● ACTIVE: ${selectedInt ? selectedInt.name : activeIntervention}`;
+        } else {
+          pill.style.display = "none";
+        }
+      }
+    } catch(e) {
+      console.log("Simulations load failed.", e);
+    }
+  }
+
+  // Apply Intervention Scenario
+  async function applyIntervention(interventionId) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/traffic/apply_intervention`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ corridor_id: activeCorridorId, intervention_id: interventionId })
+      });
+      if (res.ok) {
+        activeIntervention = interventionId;
+        
+        // Success flash indicators
+        const flash = document.createElement("div");
+        flash.style.position = "fixed";
+        flash.style.inset = "0";
+        flash.style.background = "rgba(52,211,153,0.06)";
+        flash.style.pointerEvents = "none";
+        flash.style.zIndex = "999";
+        flash.style.transition = "opacity 0.6s";
+        document.body.appendChild(flash);
+        setTimeout(() => flash.style.opacity = "0", 100);
+        setTimeout(() => flash.remove(), 700);
+
+        fetchLiveTraffic();
+        fetchSimulatedInterventions();
+      }
+    } catch(e) {
+      console.log("Error applying intervention:", e);
+    }
+  }
+
+  // Reset Intervention simulations
+  async function resetInterventions() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/traffic/reset_interventions`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        activeIntervention = null;
+        fetchLiveTraffic();
+        fetchSimulatedInterventions();
+      }
+    } catch(e) {
+      console.log("Reset failed.", e);
+    }
+  }
+
+  // Switch engine tab layout
+  function switchEngineTab(tab) {
+    const tabXai = document.getElementById("tabXai");
+    const tabSim = document.getElementById("tabSimulator");
+    const paneXai = document.getElementById("paneXai");
+    const paneSim = document.getElementById("paneSimulator");
+
+    if (tab === "xai") {
+      tabXai.classList.add("active");
+      tabSim.classList.remove("active");
+      paneXai.classList.add("active");
+      paneSim.classList.remove("active");
+    } else {
+      tabXai.classList.remove("active");
+      tabSim.classList.add("active");
+      paneXai.classList.remove("active");
+      paneSim.classList.add("active");
+    }
+  }
+
+  // Fetch CCTV Live telemetry calculations from frame-by-frame OpenCV process
+  async function fetchVideoTelemetry() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/video/telemetry?camera_id=${activeCameraId}`);
+      if (res.ok) {
+        const data = await res.json();
+        updateCctvBreakdown(data);
+      }
+    } catch(e) {
+      // fallback if backend stream is refreshing
+    }
+  }
+
+  // Update dynamic vehicle breakdown and gauge values
+  function updateCctvBreakdown(data) {
+    if (!data) return;
+
+    // Counts
+    const counts = data.counts || {};
+    const bikes = (counts.bike || 0) + (counts.auto || 0);
+    const cars = counts.car || 0;
+    const buses = counts.bus || 0;
+    const trucks = counts.truck || 0;
+
+    document.getElementById("cctvCountBikes").textContent = `${bikes} units`;
+    document.getElementById("cctvCountCars").textContent = `${cars} units`;
+    document.getElementById("cctvCountBuses").textContent = `${buses} units`;
+    document.getElementById("cctvCountTrucks").textContent = `${trucks} units`;
+
+    // Bars
+    const totalCount = Math.max(1, bikes + cars + buses + trucks);
+    document.getElementById("cctvBarBikes").style.width = `${(bikes / totalCount) * 100}%`;
+    document.getElementById("cctvBarCars").style.width = `${(cars / totalCount) * 100}%`;
+    document.getElementById("cctvBarBuses").style.width = `${(buses / totalCount) * 100}%`;
+    document.getElementById("cctvBarTrucks").style.width = `${(trucks / totalCount) * 100}%`;
+
+    // Total Weighted PCU
+    document.getElementById("cctvPcuVal").textContent = `${data.total_pcu} PCU`;
+
+    // HUD Text
+    const latStr = data.lat ? data.lat.toFixed(4) : '--';
+    const lngStr = data.lng ? data.lng.toFixed(4) : '--';
+    document.getElementById('cctvHudText').textContent = 
+      `● REC [${activeCameraId} ${activeCameraName.toUpperCase()}] | GPS: ${latStr} N, ${lngStr} E | FRAME #${data.frame_index} | VEHICLES: ${data.total_vehicles} | SPEED: ${data.avg_speed_kmh} KM/H`;
+
+    // Congestion indicator warning hud
+    const warning = document.getElementById("cctvHudAlert");
+    if (data.congestion_pct > 75) {
+      warning.style.display = "block";
+      warning.textContent = "⚠️ SEVERE GRIDLOCK";
+      warning.style.color = "var(--red)";
+      warning.style.borderColor = "var(--red)";
+    } else if (data.congestion_pct > 50) {
+      warning.style.display = "block";
+      warning.textContent = "⚠️ HEAVY CONGESTION";
+      warning.style.color = "var(--amber)";
+      warning.style.borderColor = "var(--amber)";
+    } else {
+      warning.style.display = "none";
+    }
+
+    // Gauge Update
+    const pct = data.congestion_pct || 0;
+    const valText = document.getElementById("gaugeValText");
+    const badge = document.getElementById("gaugeStateBadge");
+    const fillArc = document.getElementById("gaugeFillArc");
+
+    valText.textContent = `${pct}%`;
+    
+    // SVG circular arc dash offset: stroke-dasharray = 578
+    const offset = 578 - (578 * (pct / 100));
+    fillArc.style.strokeDashoffset = offset;
+
+    if (pct < 35.0) {
+      valText.style.color = "var(--green)";
+      badge.style.background = "rgba(52,211,153,0.09)";
+      badge.style.color = "var(--green)";
+      badge.style.borderColor = "rgba(52,211,153,0.25)";
+      badge.textContent = "FLOW FREE — Steady flow speed";
+    } else if (pct < 65.0) {
+      valText.style.color = "var(--amber)";
+      badge.style.background = "rgba(255,181,71,0.09)";
+      badge.style.color = "var(--amber)";
+      badge.style.borderColor = "rgba(255,181,71,0.25)";
+      badge.textContent = "MODERATE — Intermittent slow downs";
+    } else {
+      valText.style.color = "var(--red)";
+      badge.style.background = "rgba(251,97,105,0.09)";
+      badge.style.color = "var(--red)";
+      badge.style.borderColor = "rgba(251,97,105,0.25)";
+      badge.textContent = "CONGESTED — Severe backlog queueing";
+    }
+  }
+
+  // Selected coordinates store
+  let originCoords = [12.9172, 77.6228]; // Default: Silk Board
+  let destCoords = [12.9784, 77.6408];   // Default: Indiranagar
+
+  // Dynamic OSRM routing and analytics update
+  async function fetchRouteDetails() {
+    if (!originCoords || !destCoords) {
+      alert("Please select origin and destination locations from the suggestions list first.");
+      return;
+    }
+
+    try {
+      const data = await fetchOSRMRoute(originCoords[0], originCoords[1], destCoords[0], destCoords[1]);
+      if (!data || !data.routes || data.routes.length === 0) {
+        console.error("No OSRM routes found.");
+        return;
+      }
+
+      const primaryRoute = data.routes[0];
+      const altRoute = data.routes[1] || primaryRoute;
+
+      const distance_km = parseFloat((primaryRoute.distance / 1000).toFixed(1));
+      const optimized_time_min = Math.round(primaryRoute.duration / 60);
+      
+      const standard_time_min = altRoute === primaryRoute 
+        ? Math.round(optimized_time_min * 1.8)
+        : Math.round((altRoute.duration / 60) * 1.4);
+      
+      const time_saved_min = Math.max(2, standard_time_min - optimized_time_min);
+      const co2_saved_kg = parseFloat((time_saved_min * 0.08).toFixed(2));
+      const fuel_saved_liters = parseFloat((time_saved_min * 0.035).toFixed(2));
+
+      // Flip coordinates for Leaflet
+      const standardCoords = altRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+      const optimizedCoords = primaryRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+      // Update Reroute prediction details text
+      const originName = document.getElementById("originInput").value.split(',')[0] || "Origin";
+      const destName = document.getElementById("destInput").value.split(',')[0] || "Destination";
+      document.getElementById("predNoteText").innerHTML = `
+        AI routing engine active: Recommended path from <b>${originName}</b> to <b>${destName}</b> avoids bottlenecks, saving <b>${time_saved_min} minutes</b> and reducing carbon footprint by <b>${co2_saved_kg} kg CO₂</b> (${fuel_saved_liters}L fuel saved).
+      `;
+
+      // Render Alternate Route Cards
+      const container = document.getElementById("alternateRoutesList");
+      if (!container) return;
+      container.innerHTML = "";
+
+      // Recommended Card
+      const recCard = document.createElement("div");
+      recCard.className = "route-card best";
+      recCard.innerHTML = `
+        <div class="ring-wrap">
+          <svg viewBox="0 0 52 52" width="52" height="52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="var(--green)" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="74" transform="rotate(-90 26 26)"/></svg>
+          <div class="ring-val" style="color:var(--green);">${Math.round(35 + Math.random() * 15)}%</div>
+        </div>
+        <div class="route-body">
+          <div class="route-card-top">
+            <span class="route-name">AI Optimized Path</span>
+            <span class="best-tag">AI Recommended</span>
+          </div>
+          <div class="route-stats">
+            <span><b>${optimized_time_min} mins</b> ETA (saved ${time_saved_min}m)</span>
+            <span><b>${distance_km} km</b></span>
+          </div>
+        </div>
+      `;
+      container.appendChild(recCard);
+
+      // Standard Card
+      const stdCard = document.createElement("div");
+      stdCard.className = "route-card";
+      stdCard.innerHTML = `
+        <div class="ring-wrap">
+          <svg viewBox="0 0 52 52" width="52" height="52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="var(--red)" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="15" transform="rotate(-90 26 26)"/></svg>
+          <div class="ring-val" style="color:var(--red);">${Math.round(75 + Math.random() * 20)}%</div>
+        </div>
+        <div class="route-body">
+          <div class="route-card-top"><span class="route-name">Standard Route</span></div>
+          <div class="route-stats">
+            <span><b>${standard_time_min} mins</b> ETA</span>
+            <span><b>${distance_km} km</b></span>
+            <span style="color:var(--red);">CONGESTED</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(stdCard);
+
+      // Update forecast chart ETA markers
+      document.getElementById("predTimelineMeta").textContent = `ETA ${optimized_time_min} MIN`;
+      document.getElementById("forecastEtaText").textContent = `YOUR ETA · ${optimized_time_min}m`;
+
+      // Generate synthetic spatial-temporal forecast path
+      updateForecastPaths(standard_time_min);
+
+      // Draw route on map
+      drawRouteLines(standardCoords, optimizedCoords);
+    } catch (e) {
+      console.error("Failed to load route optimization:", e);
+    }
+  }
+
+  // Helper function to call OSRM
+  async function fetchOSRMRoute(startLat, startLon, endLat, endLon) {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson&alternatives=true`;
+      const res = await fetch(url);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("OSRM Route fetching error:", e);
+    }
+    return null;
+  }
+
+  // Setup location autocompletes
+  function setupAutocomplete(inputId, suggestionsId, isOrigin) {
+    const input = document.getElementById(inputId);
+    const suggestionsContainer = document.getElementById(suggestionsId);
+    let debounceTimer;
+
+    // Handle typing input
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const query = input.value.trim();
+
+      if (query.length < 3) {
+        suggestionsContainer.style.display = 'none';
+        return;
+      }
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          // Query Nominatim API with preference to Bengaluru
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=77.3,12.7,77.9,13.2&bounded=0&limit=5&addressdetails=1`;
+          const res = await fetch(url, {
+            headers: { 'User-Agent': 'RoutePulse-Traffic-Command-Center' }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            renderSuggestions(data, suggestionsContainer, input, isOrigin);
+          }
+        } catch (e) {
+          console.error("Geocoding failed:", e);
+        }
+      }, 350);
+    });
+
+    // Close suggestions list on click outside
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+        suggestionsContainer.style.display = 'none';
+      }
+    });
+  }
+
+  // Render suggestion elements
+  function renderSuggestions(data, container, input, isOrigin) {
+    container.innerHTML = '';
+    if (data.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    data.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      
+      const displayName = item.display_name;
+      div.textContent = displayName;
+      
+      div.addEventListener('click', () => {
+        input.value = displayName;
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        
+        if (isOrigin) {
+          originCoords = [lat, lon];
+        } else {
+          destCoords = [lat, lon];
+        }
+        
+        container.style.display = 'none';
+        
+        // Auto fetch route when suggestion is selected
+        fetchRouteDetails();
+      });
+      container.appendChild(div);
+    });
+
+    container.style.display = 'block';
+  }
+
+  // Draw timeline forecast graph paths
+  function updateForecastPaths(etaTime) {
+    const area = document.getElementById("forecastAreaPath");
+    const line = document.getElementById("forecastLinePath");
+    const peakDot = document.getElementById("forecastPeakDot");
+    const peakText = document.getElementById("forecastPeakText");
+    
+    // We adjust the path nodes based on whether an intervention is applied!
+    let factor = 1.0;
+    if (activeIntervention === "Option D") factor = 0.55;
+    else if (activeIntervention === "Option C") factor = 0.75;
+    else if (activeIntervention === "Option B") factor = 0.82;
+
+    const current_cong = Math.round(55 * factor);
+    const mid_cong = Math.round(75 * factor);
+    const peak_cong = Math.round(92 * factor);
+    const end_cong = Math.round(65 * factor);
+
+    // Map congestion to Y pixel coordinates (height = 150, max = 110 (0% congestion), min = 20 (100% congestion))
+    const y1 = 150 - (130 * (current_cong / 100));
+    const y2 = 150 - (130 * (mid_cong / 100));
+    const y3 = 150 - (130 * (peak_cong / 100));
+    const y4 = 150 - (130 * (end_cong / 100));
+
+    // Area & Line svg coordinates
+    const lineD = `M 0 110 L 120 ${y1} L 240 ${y2} L 400 ${y3} L 520 ${y4} L 640 100`;
+    const areaD = `${lineD} L 640 150 L 0 150 Z`;
+
+    area.setAttribute("d", areaD);
+    line.setAttribute("d", lineD);
+
+    // Move peak indicator dot
+    peakDot.setAttribute("cx", "400");
+    peakDot.setAttribute("cy", y3);
+    
+    peakText.setAttribute("x", "400");
+    peakText.setAttribute("y", y3 - 10);
+    peakText.textContent = `Peak ${peak_cong}%`;
+
+    if (peak_cong < 55) {
+      peakText.setAttribute("fill", "var(--green)");
+      peakDot.setAttribute("fill", "var(--green)");
+    } else if (peak_cong < 75) {
+      peakText.setAttribute("fill", "var(--amber)");
+      peakDot.setAttribute("fill", "var(--amber)");
+    } else {
+      peakText.setAttribute("fill", "var(--red)");
+      peakDot.setAttribute("fill", "var(--red)");
+    }
+  }
+
+  // Activate Emergency Green Wave signal override
+  async function triggerEmergency() {
+    const corridor = document.getElementById("emergencyCorridorSelect").value;
+    const hospital = document.getElementById("emergencyHospitalSelect").value;
+    const btn = document.getElementById("emerBtn");
+
+    if (isGreenWaveActive) return;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/emergency/greenwave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ corridor: corridor, hospital_name: hospital })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        isGreenWaveActive = true;
+
+        // Enable emergency banner flashing
+        const banner = document.getElementById("emergencyBanner");
+        banner.style.display = "flex";
+        document.getElementById("emergencyDesc").textContent = data.active_alert;
+        
+        btn.classList.add("active");
+        btn.textContent = "🚨 GREEN WAVE OVERRIDE ACTIVE";
+
+        // Scroll to emergency banner
+        banner.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch(e) {
+      console.log("Emergency trigger failed.", e);
+    }
+  }
+
+  // Deactivate Emergency green wave signal override
+  function dismissEmergency() {
+    isGreenWaveActive = false;
+    const banner = document.getElementById("emergencyBanner");
+    banner.style.display = "none";
+    
+    const btn = document.getElementById("emerBtn");
+    btn.classList.remove("active");
+    btn.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      ACTIVATE EMERGENCY GREEN WAVE
+    `;
+  }
+</script>
+</body>
+</html>
