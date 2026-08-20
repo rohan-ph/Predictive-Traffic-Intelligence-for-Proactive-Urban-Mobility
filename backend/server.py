@@ -26,7 +26,8 @@ opt = route_optimizer.RouteOptimizer()
 video_proc = cctv_video_processor.CCTVVideoProcessor()
 yolo_analyzer = yolo_traffic_analyzer.YOLOTrafficAnalyzer(video_proc.video_path)
 
-HTML_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "traffic_dashboard_v2.html")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HTML_FILE_PATH = os.path.join(BASE_DIR, "traffic_dashboard.html")
 
 class TrafficAPIHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -44,19 +45,27 @@ class TrafficAPIHandler(BaseHTTPRequestHandler):
         path = parsed.path
         query = parse_qs(parsed.query)
 
-        # Serve HTML Dashboard UI at root /
-        if path == "/" or path == "/index.html" or path == "/dashboard":
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self._send_cors_headers()
-            self.end_headers()
-            try:
-                with open(HTML_FILE_PATH, 'r', encoding='utf-8') as f:
-                    html_content = f.read()
-                self.wfile.write(html_content.encode('utf-8'))
-            except Exception as e:
-                self.wfile.write(f"<h1>Error loading dashboard HTML: {e}</h1>".encode('utf-8'))
-            return
+        # Serve HTML Dashboard UI files
+        if path in ["/", "/index.html", "/dashboard", "/traffic_dashboard.html", "/traffic_dashboard_v2.html"] or path.endswith(".html"):
+            file_name = path.lstrip('/')
+            if not file_name or file_name in ["index.html", "dashboard"]:
+                file_name = "traffic_dashboard.html"
+            target_path = os.path.join(BASE_DIR, file_name)
+            if not os.path.exists(target_path):
+                target_path = HTML_FILE_PATH
+
+            if os.path.exists(target_path):
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self._send_cors_headers()
+                self.end_headers()
+                try:
+                    with open(target_path, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    self.wfile.write(html_content.encode('utf-8'))
+                except Exception as e:
+                    self.wfile.write(f"<h1>Error loading dashboard HTML: {e}</h1>".encode('utf-8'))
+                return
 
         # Serve Live Video Stream (MJPEG format)
         if path == "/api/video/feed":

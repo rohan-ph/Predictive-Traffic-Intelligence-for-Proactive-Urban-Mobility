@@ -124,7 +124,8 @@ class SimpleCentroidTracker:
 
 class YOLOTrafficAnalyzer:
     def __init__(self, video_path: Optional[str] = None):
-        self.video_path = video_path
+        self.video_path = None
+        self.has_video = False
         self.cap = None
         self.fps = 25.0
         self.total_frames = 0
@@ -170,6 +171,7 @@ class YOLOTrafficAnalyzer:
         self.video_path = video_path
         self.cap = cv2.VideoCapture(video_path)
         if self.cap.isOpened():
+            self.has_video = True
             self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 25.0
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
             self.current_frame = 0
@@ -177,6 +179,8 @@ class YOLOTrafficAnalyzer:
             self.per_vehicle_records.clear()
             self.tracked_unique_ids.clear()
             print(f"Loaded video: {video_path} | Frames: {self.total_frames} | FPS: {self.fps}")
+        else:
+            self.has_video = False
 
     def update_weights(self, weights: Dict[str, float]):
         """Dynamically update vehicle density weights from UI settings."""
@@ -202,8 +206,8 @@ class YOLOTrafficAnalyzer:
 
     def process_frame(self) -> Dict[str, Any]:
         """Process next frame, perform YOLO detection + ByteTrack tracking, compute density."""
-        if self.cap is None or not self.cap.isOpened():
-            return self._generate_synthetic_frame()
+        if not self.has_video or self.cap is None or not self.cap.isOpened():
+            return self._generate_standby_frame()
 
         ret, frame = self.cap.read()
         if not ret:
@@ -213,7 +217,7 @@ class YOLOTrafficAnalyzer:
             ret, frame = self.cap.read()
 
         if not ret or frame is None:
-            return self._generate_synthetic_frame()
+            return self._generate_standby_frame()
 
         self.current_frame += 1
         h, w, _ = frame.shape
@@ -446,36 +450,39 @@ class YOLOTrafficAnalyzer:
 
         return annotated
 
-    def _generate_synthetic_frame(self) -> Dict[str, Any]:
-        """Fallback synthetic frame generator if no video is loaded."""
-        self.current_frame += 1
+    def _generate_standby_frame(self) -> Dict[str, Any]:
+        """Generate a clean standby placeholder frame when no video is loaded."""
         h, w = 405, 720
         frame = np.zeros((h, w, 3), dtype=np.uint8)
-        frame[:] = (20, 24, 35)
+        frame[:] = (18, 22, 30) # Dark sleek slate background
         
-        cv2.line(frame, (0, int(h * 0.3)), (w, int(h * 0.3)), (50, 60, 80), 2)
-        cv2.line(frame, (0, int(h * 0.6)), (w, int(h * 0.6)), (50, 60, 80), 2)
+        # Draw grid
+        for x in range(0, w, 40):
+            cv2.line(frame, (x, 0), (x, h), (28, 34, 46), 1)
+        for y in range(0, h, 40):
+            cv2.line(frame, (0, y), (w, y), (28, 34, 46), 1)
 
-        objects = self._cv_fallback_detection(frame, h, w)
-        counts = {"car": 0, "bike": 0, "bus": 0, "truck": 0}
-        total_raw = sum(o["density"] for o in objects)
-        norm_density = min(10.0, round((total_raw / self.max_capacity_raw) * 10.0, 1))
+        # Draw frame box & standby text
+        cv2.rectangle(frame, (120, 100), (600, 305), (55, 65, 85), 2)
+        cv2.putText(frame, "NO CCTV VIDEO LOADED", (220, 175), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame, "Please upload a CCTV video file to begin AI vehicle detection", (145, 215), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (150, 170, 200), 1, cv2.LINE_AA)
+        cv2.putText(frame, "[ STANDBY | VEHICLE COUNT: 0 | DENSITY: 0.0 PCU ]", (185, 255), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (52, 211, 153), 1, cv2.LINE_AA)
 
-        annotated = self._draw_annotations(frame, objects, norm_density, "MODERATE", "#FFB547", "00:00")
-        _, jpeg_buf = cv2.imencode('.jpg', annotated)
+        _, jpeg_buf = cv2.imencode('.jpg', frame)
 
         return {
             "timestamp": "00:00",
-            "frame_index": self.current_frame,
-            "total_vehicles": len(objects),
-            "counts": {"car": 4, "bike": 3, "bus": 1, "truck": 1},
-            "raw_density": round(total_raw, 1),
-            "normalized_density": norm_density,
-            "status": "MODERATE",
-            "status_color": "#FFB547",
-            "avg_confidence": 92.4,
-            "unique_vehicles_tracked": 9,
-            "vehicles": objects,
+            "frame_index": 0,
+            "total_vehicles": 0,
+            "counts": {"car": 0, "bike": 0, "bus": 0, "truck": 0, "auto": 0, "van": 0, "bicycle": 0},
+            "raw_density": 0.0,
+            "normalized_density": 0.0,
+            "status": "NO VIDEO UPLOADED",
+            "status_color": "#6B7280",
+            "avg_confidence": 0.0,
+            "unique_vehicles_tracked": 0,
+            "vehicles": [],
+            "has_video": False,
             "jpeg_bytes": jpeg_buf.tobytes()
         }
 
