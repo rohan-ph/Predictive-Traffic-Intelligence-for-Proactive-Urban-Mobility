@@ -204,76 +204,57 @@
     font-family: var(--font-mono); font-size: 10.5px; color: var(--red); display: none; font-weight: bold;
   }
 
-  /* ── Synthetic Dataset Video Upload Zone ── */
-  .upload-zone-wrap { padding: 0 20px 20px; }
-  .upload-dropzone {
-    border: 2px dashed var(--cyan);
-    border-radius: 12px;
-    padding: 18px 20px 14px;
-    background: rgba(77,214,255,0.03);
-    transition: background 0.2s, border-color 0.2s;
-    cursor: pointer;
-    text-align: center;
+  /* ── Available Route Cameras Selector Strip ── */
+  .route-cam-section { padding: 0 20px 18px; }
+  .route-cam-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
   }
-  .upload-dropzone.drag-over {
-    background: rgba(77,214,255,0.1);
-    border-color: var(--amber);
-  }
-  .upload-dropzone-icon {
-    font-size: 26px;
-    margin-bottom: 6px;
-    display: block;
-  }
-  .upload-dropzone-label {
+  .route-cam-title {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10px;
     color: var(--cyan);
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    display: block;
-    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
-  .upload-dropzone-sub {
-    font-size: 10px;
-    color: var(--text-faint);
-    font-family: var(--font-body);
-  }
-  .upload-browse-btn {
+  .route-cam-title::before {
+    content: '';
     display: inline-block;
-    margin-top: 10px;
-    padding: 5px 16px;
-    background: transparent;
-    border: 1px solid var(--cyan);
-    border-radius: 6px;
-    color: var(--cyan);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan-glow);
   }
-  .upload-browse-btn:hover { background: var(--cyan); color: #0A0E17; }
-
-  .uploaded-videos-list {
+  .route-cam-subtitle {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-faint);
+  }
+  .cam-strip {
     display: flex;
     gap: 10px;
-    margin-top: 12px;
     overflow-x: auto;
     padding-bottom: 4px;
     scrollbar-width: thin;
   }
-  .uploaded-videos-list:empty::after {
-    content: 'No videos uploaded yet.';
+  .cam-strip:empty::after {
+    content: 'SEARCH A ROUTE TO VIEW CAMERAS ON THAT ROUTE';
     font-family: var(--font-mono);
     font-size: 10px;
     color: var(--text-faint);
     letter-spacing: 0.5px;
     display: block;
-    padding: 4px 0;
+    padding: 12px 0;
   }
-  .uv-card {
+  .cam-thumb {
     flex-shrink: 0;
-    width: 130px;
+    width: 140px;
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -282,60 +263,55 @@
     background: var(--panel-solid);
     position: relative;
   }
-  .uv-card:hover { transform: translateY(-2px); border-color: var(--border-hi); }
-  .uv-card.active { border-color: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
-  .uv-thumb {
+  .cam-thumb:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+  .cam-thumb.active { border-color: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
+  .cam-thumb-img {
     height: 52px;
-    background: linear-gradient(135deg,#0c1624,#07111f);
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    background: linear-gradient(135deg, #0f1c2e, #070e17);
   }
-  .uv-thumb-play {
-    font-size: 18px;
-    opacity: 0.6;
-  }
-  .uv-active-dot {
+  .cam-thumb-tag {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--cyan);
-    box-shadow: 0 0 6px var(--cyan-glow);
-    display: none;
+    top: 5px;
+    left: 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: bold;
+    background: rgba(0,0,0,0.75);
+    color: var(--cyan);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(77,214,255,0.3);
   }
-  .uv-card.active .uv-active-dot { display: block; }
-  .uv-foot {
-    padding: 6px 8px;
+  .cam-thumb-icon { font-size: 18px; opacity: 0.7; }
+  .cam-thumb-foot {
+    padding: 7px 9px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 4px;
+    background: var(--panel-solid);
   }
-  .uv-name {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
+  .cam-thumb-foot .n { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .cam-thumb-foot .pct { font-family: var(--font-mono); font-size: 10px; font-weight: bold; }
+  .cam-thumb-foot .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Upload button card in route strip */
+  .cam-thumb-upload {
+    border: 1px dashed var(--cyan);
+    background: rgba(77,214,255,0.03);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 82px;
   }
-  .uv-remove {
-    background: none;
-    border: none;
-    color: var(--text-faint);
-    font-size: 12px;
-    cursor: pointer;
-    padding: 0 2px;
-    line-height: 1;
-    transition: color 0.15s;
-    flex-shrink: 0;
+  .cam-thumb-upload:hover {
+    background: rgba(77,214,255,0.08);
+    border-color: var(--cyan);
   }
-  .uv-remove:hover { color: var(--red); }
 
   .legend-row{ display:flex; gap:16px; padding: 0 20px 18px; flex-wrap:wrap; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-dim); }
@@ -819,25 +795,19 @@
             <div class="video-hud-alert" id="cctvHudAlert">⚠️ CONGESTION BUILDING</div>
           </div>
 
-          <!-- ── Synthetic Dataset Upload Zone ── -->
-          <div class="upload-zone-wrap">
-            <!-- Hidden file input -->
-            <input type="file" id="datasetFileInput" accept="video/*" multiple style="display:none;" onchange="handleVideoUpload(event)">
-
-            <!-- Drag & drop zone -->
-            <div class="upload-dropzone" id="uploadDropzone"
-              ondragover="event.preventDefault(); this.classList.add('drag-over');"
-              ondragleave="this.classList.remove('drag-over');"
-              ondrop="handleVideoDrop(event);"
-              onclick="document.getElementById('datasetFileInput').click()">
-              <span class="upload-dropzone-icon">🎬</span>
-              <span class="upload-dropzone-label">Drop Synthetic Dataset Videos Here</span>
-              <span class="upload-dropzone-sub">Supports MP4, WebM, MOV, AVI</span>
-              <div class="upload-browse-btn">BROWSE FILES</div>
+          <!-- ── Available Route Cameras Strip Section ── -->
+          <div class="route-cam-section">
+            <div class="route-cam-head">
+              <div class="route-cam-title">CAMERAS ON THIS ROUTE</div>
+              <div class="route-cam-subtitle" id="routeCamSubtitle">SEARCH A ROUTE TO LOAD CAMERAS</div>
+            </div>
+            
+            <div class="cam-strip" id="camerasThumbStrip">
+              <!-- Dynamically populated with ONLY cameras on calculated route -->
             </div>
 
-            <!-- Uploaded videos list -->
-            <div class="uploaded-videos-list" id="uploadedVideosList"></div>
+            <!-- Hidden input for uploading dataset video -->
+            <input type="file" id="datasetFileInput" accept="video/*" style="display:none;" onchange="handleVideoUpload(event)">
           </div>
         </div>
 
@@ -1168,6 +1138,7 @@
     activeRouteLines.push(optLine);
 
     // Place synthetic CCTV cameras along the optimized route
+    activeRouteCameras = [];
     if (optimizedCoords.length > 4) {
       const indices = [
         Math.floor(optimizedCoords.length * 0.25),
@@ -1186,12 +1157,10 @@
         const coord = optimizedCoords[idx];
         const camId = `CAM-SYN-0${i+1}`;
         
-        // Dynamic name using start and destination names if possible
         const originName = document.getElementById("originInput").value.split(',')[0] || "Origin";
         const destName = document.getElementById("destInput").value.split(',')[0] || "Destination";
-        const camName = `${originName} to ${destName} - Leg ${i+1}`;
-        
-        // Deterministic synthetic congestion percentage based on leg index
+        const legName = `Leg ${i+1}`;
+        const camName = `${originName} to ${destName} - ${legName}`;
         const congestion = Math.floor(35 + (i * 20) + Math.random() * 15);
         
         const marker = L.marker(coord, { icon: cameraIcon }).addTo(osmMap);
@@ -1211,8 +1180,18 @@
         });
 
         syntheticCameraMarkers.push(marker);
+        activeRouteCameras.push({
+          id: camId,
+          name: camName,
+          legName: legName,
+          congestion: congestion,
+          coord: coord
+        });
       });
     }
+
+    // Update bottom camera selector strip to show ONLY these route cameras
+    renderRouteCamerasStrip(activeRouteCameras);
 
     const group = new L.featureGroup([stdLine, optLine]);
     osmMap.fitBounds(group.getBounds(), { padding: [50, 50] });
@@ -1339,104 +1318,88 @@
     });
   }
 
-  // ── Synthetic Dataset Video Upload Handling ──
-  let uploadedVideos = []; // { name, url, id }
-  let activeUploadedVideoId = null;
+  // Global store for cameras on the currently calculated route
+  let activeRouteCameras = [];
 
-  function handleVideoDrop(event) {
-    event.preventDefault();
-    document.getElementById('uploadDropzone').classList.remove('drag-over');
-    const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('video/'));
-    addVideosToList(files);
+  // Render horizontal camera strip containing ONLY cameras on the calculated route
+  function renderRouteCamerasStrip(routeCams) {
+    const strip = document.getElementById("camerasThumbStrip");
+    const subtitle = document.getElementById("routeCamSubtitle");
+    if (!strip) return;
+    
+    strip.innerHTML = "";
+    
+    if (!routeCams || routeCams.length === 0) {
+      if (subtitle) subtitle.textContent = "SEARCH A ROUTE TO LOAD CAMERAS";
+      return;
+    }
+
+    if (subtitle) {
+      subtitle.textContent = `${routeCams.length} CAMERAS DETECTED ON ROUTE`;
+    }
+
+    routeCams.forEach(cam => {
+      const isSelected = activeSyntheticCamera && activeSyntheticCamera.id === cam.id;
+      const thumb = document.createElement("div");
+      thumb.className = `cam-thumb ${isSelected ? 'active' : ''}`;
+      
+      let statusColor = "#34D399";
+      if (cam.congestion >= 75) statusColor = "#FB6169";
+      else if (cam.congestion >= 50) statusColor = "#FFB547";
+
+      thumb.innerHTML = `
+        <div class="cam-thumb-img">
+          <span class="cam-thumb-tag">${cam.id}</span>
+          <span class="cam-thumb-icon">📷</span>
+        </div>
+        <div class="cam-thumb-foot">
+          <span class="n">${cam.legName}</span>
+          <span class="pct" style="color:${statusColor};">${cam.congestion}%</span>
+        </div>
+      `;
+      
+      thumb.onclick = () => {
+        selectSyntheticCamera(cam.id, cam.name, cam.congestion, cam.coord);
+      };
+
+      strip.appendChild(thumb);
+    });
+
+    // Add upload card at the end of the strip
+    const uploadCard = document.createElement("div");
+    uploadCard.className = "cam-thumb cam-thumb-upload";
+    uploadCard.innerHTML = `
+      <span style="font-size:16px; margin-bottom:2px;">📁</span>
+      <span style="font-family:var(--font-mono); font-size:9px; color:var(--cyan); letter-spacing:0.5px;">+ UPLOAD VIDEO</span>
+    `;
+    uploadCard.onclick = () => {
+      document.getElementById("datasetFileInput").click();
+    };
+    strip.appendChild(uploadCard);
   }
 
   function handleVideoUpload(event) {
-    const files = Array.from(event.target.files).filter(f => f.type.startsWith('video/'));
-    addVideosToList(files);
-    event.target.value = '';
-  }
-
-  function addVideosToList(files) {
-    files.forEach(file => {
-      const id = 'uv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-      const url = URL.createObjectURL(file);
-      uploadedVideos.push({ id, name: file.name, url });
-    });
-    renderUploadedVideosList();
-    if (files.length > 0) {
-      const last = uploadedVideos[uploadedVideos.length - 1];
-      playUploadedVideo(last.id);
-    }
-  }
-
-  function renderUploadedVideosList() {
-    const list = document.getElementById('uploadedVideosList');
-    if (!list) return;
-    list.innerHTML = '';
-    uploadedVideos.forEach(v => {
-      const card = document.createElement('div');
-      card.className = `uv-card ${v.id === activeUploadedVideoId ? 'active' : ''}`;
-      card.id = 'uv_card_' + v.id;
-      card.innerHTML = `
-        <div class="uv-thumb">
-          <span class="uv-thumb-play">▶</span>
-          <span class="uv-active-dot"></span>
-        </div>
-        <div class="uv-foot">
-          <span class="uv-name" title="${v.name}">${v.name.replace(/\.[^.]+$/, '')}</span>
-          <button class="uv-remove" title="Remove" onclick="event.stopPropagation(); removeUploadedVideo('${v.id}')">✕</button>
-        </div>
-      `;
-      card.onclick = () => playUploadedVideo(v.id);
-      list.appendChild(card);
-    });
-  }
-
-  function playUploadedVideo(id) {
-    const v = uploadedVideos.find(x => x.id === id);
-    if (!v) return;
-    activeUploadedVideoId = id;
+    const file = event.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    
     const player = document.getElementById('cctvVideoPlayer');
     const frameImg = document.getElementById('cctvVideoFrame');
-    const idleOverlay = document.getElementById('cctvUploadIdleOverlay');
     const synthOverlay = document.getElementById('cctvSyntheticPlaceholder');
-    player.src = v.url;
+
+    player.src = url;
     player.style.display = 'block';
     if (frameImg) frameImg.style.display = 'none';
-    if (idleOverlay) idleOverlay.style.display = 'none';
     if (synthOverlay) synthOverlay.style.display = 'none';
-    const shortName = v.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 28);
+
+    const shortName = file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 24);
     const hud = document.getElementById('cctvHudText');
-    if (hud) hud.textContent = `● DATASET [${shortName}] | SYNTHETIC AI ANALYSIS ACTIVE`;
+    if (hud) hud.textContent = `● DATASET [${shortName}] | ROUTE FOOTAGE PLAYING`;
+
     const title = document.getElementById('cctvPanelTitle');
-    if (title) title.innerHTML = `<span class="eyebrow"></span>SYNTHETIC DATASET MONITOR — ${shortName}`;
-    activeSyntheticCamera = activeSyntheticCamera || {
-      id: 'DATASET', name: shortName,
-      congestion: Math.floor(40 + Math.random() * 40),
-      lat: 12.9716, lng: 77.5946, frameIndex: 0
-    };
-    renderUploadedVideosList();
-  }
+    if (title) title.innerHTML = `<span class="eyebrow"></span>ROUTE DATASET VIDEO — ${shortName}`;
 
-  function removeUploadedVideo(id) {
-    const v = uploadedVideos.find(x => x.id === id);
-    if (v) URL.revokeObjectURL(v.url);
-    uploadedVideos = uploadedVideos.filter(x => x.id !== id);
-    if (activeUploadedVideoId === id) {
-      activeUploadedVideoId = null;
-      const player = document.getElementById('cctvVideoPlayer');
-      const frameImg = document.getElementById('cctvVideoFrame');
-      if (player) { player.pause(); player.src = ''; player.style.display = 'none'; }
-      if (frameImg) frameImg.style.display = 'block';
-      activeSyntheticCamera = null;
-      updateActiveCameraView();
-    }
-    renderUploadedVideosList();
-  }
-
-  // Render Horizontal Camera Thumbnails strip (kept for compatibility)
-  function renderThumbnailsStrip(corridors) {
-    // Thumbnails strip replaced by upload zone — no-op
+    event.target.value = '';
   }
 
   // Handle camera node or thumbnail click
@@ -1696,6 +1659,9 @@
         }
       }
     });
+
+    // Re-render strip to highlight active route camera card
+    renderRouteCamerasStrip(activeRouteCameras);
 
     // Do immediate local update of metrics
     updateSyntheticTelemetry();
