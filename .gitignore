@@ -2,3 +2,10 @@ __pycache__/
 *.pyc
 .vscode/
 *.log
+
+# YOLO model weights (large binary files)
+*.pt
+*.onnx
+
+# Uploaded CCTV videos
+uploads/
